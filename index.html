@@ -1,129 +1,99 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Slot Mahjong</title>
   <style>
-    :root{
-      --bg:#b22222;
-      --panel:#2b2b2b;
-      --accent:#28a745;
-      --danger:#dc3545;
-      --tile-size: calc(min(80px, 18vw));
-      --gap:6px;
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #b22222;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      padding:18px 12px;
-      font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--bg);
-      color:#fff;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      min-height:100vh;
+    h1 {
+      margin: 10px;
     }
-    h1{margin:6px 0 12px;font-size:1.2rem}
-    #boardWrap{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      width:100%;
-      max-width:420px;
+    #slot {
+      display: grid;
+      grid-template-columns: repeat(5, 70px);
+      grid-template-rows: repeat(4, 70px);
+      gap: 5px;
+      background: #2b2b2b;
+      padding: 10px;
+      border-radius: 10px;
+      margin: 10px 0;
     }
-    #slot{
-      display:grid;
-      /* 5 kolom x 4 baris */
-      grid-template-columns:repeat(5, 1fr);
-      grid-auto-rows: var(--tile-size);
-      gap:var(--gap);
-      background:var(--panel);
-      padding:12px;
-      border-radius:12px;
-      width:100%;
+    #slot img {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+      transition: transform 0.3s, opacity 0.3s;
     }
-    #slot img{
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      background:#fff;
-      border-radius:8px;
-      display:block;
-      user-select:none;
-      -webkit-user-drag:none;
+    #slot img.burst {
+      animation: burst 0.6s forwards;
     }
-    #controls{
-      display:flex;
-      gap:10px;
-      margin-top:12px;
+    @keyframes burst {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.5); opacity: 0; }
     }
-    button{
-      padding:10px 16px;
-      font-size:16px;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
+    #slot img.fall {
+      animation: fall 0.3s ease-in;
     }
-    #spin{background:var(--accent); color:#fff}
-    #stop{background:var(--danger); color:#fff}
-    #saldo{
-      margin-top:12px;
-      font-size:18px;
-      background:rgba(0,0,0,0.35);
-      padding:8px 14px;
-      border-radius:8px;
+    @keyframes fall {
+      0% { transform: translateY(-80px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
     }
-    #msg{
-      margin-top:10px;
-      min-height:36px;
-      width:100%;
-      max-width:420px;
-      text-align:center;
-      font-weight:600;
-      font-size:15px;
+    #controls {
+      display: flex;
+      gap: 10px;
     }
-
-    /* responsive tweaks */
-    @media (max-width:400px){
-      :root{--gap:4px}
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #spin { background: #28a745; color: #fff; }
+    #stop { background: #dc3545; color: #fff; }
+    #saldo {
+      margin-top: 10px;
+      font-size: 18px;
+      background: #00000066;
+      padding: 8px 16px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
   <h1>Slot Mahjong</h1>
+  <div id="slot"></div>
 
-  <div id="boardWrap">
-    <div id="slot" aria-hidden="false"></div>
-
-    <div id="controls">
-      <button id="spin">🎰 Spin (Rp.100)</button>
-      <button id="stop">⏹ Stop</button>
-    </div>
-
-    <div id="saldo">Saldo: Rp. 10000</div>
-    <div id="msg"></div>
+  <div id="controls">
+    <button id="spin">🎰 Spin</button>
+    <button id="stop">⏹ Stop</button>
   </div>
 
+  <div id="saldo">Saldo: Rp. 10000</div>
+
   <script>
-    /*************************************************************************
-     *  KAMUS GAMBAR
-     *  Pastikan file gambar ada di folder: img/tiles/
-     *  Nama file-nya sesuai array `symbols`.
-     *
-     *  Kamu sudah menyiapkan gambar — sesuaikan nama file bila perlu.
-     *************************************************************************/
     const symbols = [
       // Bamboo 1–9
       "bamboo-1.png","bamboo-2.png","bamboo-3.png","bamboo-4.png","bamboo-5.png",
       "bamboo-6.png","bamboo-7.png","bamboo-8.png","bamboo-9.png",
 
-      // Characters 1–9 (user kata 'characters' bukan 'char')
+      // Characters 1–9
       "characters-1.png","characters-2.png","characters-3.png","characters-4.png","characters-5.png",
       "characters-6.png","characters-7.png","characters-8.png","characters-9.png",
 
-      // Dots 1–9 (user pakai 'dots')
+      // Dots 1–9
       "dots-1.png","dots-2.png","dots-3.png","dots-4.png","dots-5.png",
       "dots-6.png","dots-7.png","dots-8.png","dots-9.png",
 
@@ -133,259 +103,145 @@
       // Dragons
       "dragon-red.png","dragon-green.png","dragon-white.png",
 
-      // Special tiles for slot
+      // Special tiles
       "wild.png","scatter.png"
     ];
 
-    /*************************************************************************
-     * KONFIGURASI (boleh ubah sesuai selera)
-     *************************************************************************/
-    const GRID_COLS = 5;
-    const GRID_ROWS = 4; // 4 x 5
-    const SPIN_COST = 100; // Rp.100 per spin
-    let paytable = {
-      // payout per combination for a given number of consecutive columns starting from left
-      // 3 columns -> Rp.200 per combination, 4 -> 500, 5 -> 2000 (contoh)
-      3: 200,
-      4: 500,
-      5: 2000
-    };
-
-    /*************************************************************************
-     * STATE
-     *************************************************************************/
     const slot = document.getElementById("slot");
     const spinBtn = document.getElementById("spin");
     const stopBtn = document.getElementById("stop");
     const saldoBox = document.getElementById("saldo");
-    const msgBox = document.getElementById("msg");
 
     let saldo = 10000;
-    let spinningInterval = null;
-    let finalStopTimeout = null;
-    let imgs = []; // NodeList gambar
-    let isSpinning = false;
+    let spinning;
 
-    // agar path mudah diubah, root folder tile:
-    const TILE_PATH = "img/tiles/";
-
-    /*************************************************************************
-     * Preload images (supaya tidak telat muncul)
-     *************************************************************************/
-    function preloadAll(){
-      symbols.forEach(s => {
-        const img = new Image();
-        img.src = TILE_PATH + s;
-      });
-    }
-
-    /*************************************************************************
-     * Inisialisasi grid (4x5)
-     *************************************************************************/
-    function initGrid(){
+    // Buat grid awal 4x5
+    function initGrid() {
       slot.innerHTML = "";
-      for(let i=0;i<GRID_ROWS*GRID_COLS;i++){
+      for (let i = 0; i < 20; i++) {
         const img = document.createElement("img");
-        img.alt = "tile";
-        // random initial
-        img.src = TILE_PATH + symbols[Math.floor(Math.random()*symbols.length)];
+        img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
         slot.appendChild(img);
       }
-      imgs = slot.querySelectorAll("img");
-      msgBox.innerText = "";
     }
 
-    /*************************************************************************
-     * Helper: ambil simbol di posisi (row, col)
-     * grid disimpan row-major (row0..row3, col0..col4)
-     *************************************************************************/
-    function getGridSymbols(){
-      // return 2D array [rows][cols]
-      const grid = [];
-      for(let r=0;r<GRID_ROWS;r++){
-        grid[r] = [];
-        for(let c=0;c<GRID_COLS;c++){
-          const idx = r*GRID_COLS + c;
-          grid[r][c] = imgs[idx].getAttribute("data-sym") || imgs[idx].src.split("/").pop(); // nama file
-        }
-      }
-      return grid;
-    }
-
-    /*************************************************************************
-     * Ketika spin berjalan: kita ubah atribut data-sym juga supaya evaluasi tidak
-     * tergantung pada src penuh (cross origin) — simpan nama file di data-sym.
-     *************************************************************************/
-    function randomizeVisible(){
-      imgs.forEach(img => {
-        const s = symbols[Math.floor(Math.random()*symbols.length)];
-        img.src = TILE_PATH + s;
-        img.setAttribute("data-sym", s);
-      });
-    }
-
-    /*************************************************************************
-     * Start spin: kurangi saldo, mulai interval
-     *************************************************************************/
-    function startSpin(){
-      if(isSpinning) return;
-      if(saldo < SPIN_COST){
+    function startSpin() {
+      if (saldo < 100) {
         alert("Saldo tidak cukup!");
         return;
       }
-      saldo -= SPIN_COST;
-      updateSaldoBox();
+      saldo -= 100; // biaya spin
+      saldoBox.innerText = "Saldo: Rp. " + saldo;
 
-      isSpinning = true;
-      // Spin cepat: setiap 80ms ubah seluruh grid (mirip slot)
-      spinningInterval = setInterval(randomizeVisible, 80);
-
-      // Enable stop
-      spinBtn.disabled = true;
-      stopBtn.disabled = false;
-      msgBox.innerText = "Berputar...";
+      spinning = setInterval(() => {
+        const imgs = slot.querySelectorAll("img");
+        imgs.forEach(img => {
+          img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+        });
+      }, 100);
     }
 
-    /*************************************************************************
-     * Stop spin: hentikan interval, tetapkan hasil akhir (random sekali lagi
-     * lalu evaluasi). Kita tambahkan sedikit staggered stop effect:
-     *************************************************************************/
-    function stopSpin(){
-      if(!isSpinning) return;
-      // hentikan interval utama segera sehingga tidak ada flicker
-      clearInterval(spinningInterval);
-      spinningInterval = null;
-
-      // lakukan finalize: kita lakukan 5 tahap untuk efek berhenti kolom demi kolom
-      let col = 0;
-      const stopPerCol = 120; // ms per kolom finishing
-      const finalize = ()=>{
-        // finalize column `col` dengan random gambar baru
-        for(let r=0;r<GRID_ROWS;r++){
-          const idx = r*GRID_COLS + col;
-          const s = symbols[Math.floor(Math.random()*symbols.length)];
-          imgs[idx].src = TILE_PATH + s;
-          imgs[idx].setAttribute("data-sym", s);
-        }
-        col++;
-        if(col < GRID_COLS){
-          finalStopTimeout = setTimeout(finalize, stopPerCol);
-        } else {
-          // selesai semua kolom -> evaluasi kemenangan
-          isSpinning = false;
-          spinBtn.disabled = false;
-          stopBtn.disabled = true;
-          evaluateResult();
-        }
-      };
-      stopBtn.disabled = true;
-      finalize();
+    function stopSpin() {
+      clearInterval(spinning);
+      checkWin();
     }
 
-    /*************************************************************************
-     * EVALUASI HASIL (sesuai aturan)
-     *
-     * - Untuk setiap simbol unik, periksa kolom dari kiri ke kanan:
-     *   ambil count kemunculan simbol di kol0, kol1, kol2, ...
-     * - Cari longest consecutive prefix (mulai dari kol0) di mana count>0.
-     * - Jika length >= 3 -> ada kemenangan untuk simbol itu.
-     * - Jumlah kombinasi (pecah N) = product(counts di tiap kol dalam prefix).
-     * - Hadiah = paytable[length] * combinations.
-     * - Total hadiah adalah penjumlahan untuk semua simbol (boleh ada beberapa simbol
-     *   berbeda yang menang — ini dapat terjadi).
-     *************************************************************************/
-    function evaluateResult(){
-      const grid = getGridSymbols(); // 2D [rows][cols]
-      // buat array counts per symbol per column
-      const countsPerSymbol = {}; // { symbolFileName: [c0count, c1count, c2count, ...] }
+    // ✅ Fungsi cek kemenangan minimal 3 dari kiri ke kanan
+    function checkWin() {
+      const rows = 4;
+      const cols = 5;
+      let grid = [];
+      let imgs = [...slot.querySelectorAll("img")];
 
-      // hitung counts
-      for(let c=0;c<GRID_COLS;c++){
-        for(let r=0;r<GRID_ROWS;r++){
-          const sym = grid[r][c];
-          if(!countsPerSymbol[sym]) countsPerSymbol[sym] = Array(GRID_COLS).fill(0);
-          countsPerSymbol[sym][c] += 1;
+      for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+          grid[r][c] = imgs[r * cols + c];
         }
       }
 
-      let totalWin = 0;
-      let winDetails = [];
+      let winTiles = [];
 
-      // cek setiap simbol
-      Object.keys(countsPerSymbol).forEach(sym => {
-        const counts = countsPerSymbol[sym];
-        // cari longest prefix dari kiri dengan count>0
-        let length = 0;
-        for(let i=0;i<GRID_COLS;i++){
-          if(counts[i] > 0) length++;
-          else break;
-        }
-        if(length >= 3){
-          // jumlah kombinasi = product(counts[0..length-1])
-          let combos = 1;
-          for(let k=0;k<length;k++) combos *= counts[k];
-
-          // payout per kombinasi sesuai paytable (jika tidak ada definisi, 0)
-          const base = paytable[length] || 0;
-          const winAmount = base * combos;
-          if(winAmount > 0){
-            totalWin += winAmount;
-            winDetails.push({
-              sym,
-              columns: length,
-              combos,
-              base,
-              winAmount
-            });
+      for (let r = 0; r < rows; r++) {
+        let match = [grid[r][0]];
+        for (let c = 1; c < cols; c++) {
+          if (grid[r][c].src === match[0].src) {
+            match.push(grid[r][c]);
+            if (match.length >= 3 && c >= 2) {
+              winTiles.push(...match);
+            }
+          } else {
+            match = [grid[r][c]];
           }
         }
-      });
+      }
 
-      if(totalWin > 0){
-        saldo += totalWin;
-        updateSaldoBox();
-        // tampilkan detail singkat
-        const lines = winDetails.map(d => {
-          const name = d.sym;
-          return `${d.columns} kolom x ${d.combos} kombinasi × Rp.${d.base} = Rp.${d.winAmount}`;
+      if (winTiles.length > 0) {
+        let hadiah = winTiles.length * 200;
+        saldo += hadiah;
+        saldoBox.innerText = "Saldo: Rp. " + saldo;
+
+        winTiles.forEach((img, idx) => {
+          setTimeout(() => {
+            img.classList.add("burst");
+            setTimeout(() => {
+              img.style.visibility = "hidden";
+              img.classList.remove("burst");
+            }, 600);
+          }, idx * 100);
         });
-        msgBox.innerText = `MENANG! Total: Rp. ${totalWin}\n` + lines.join("\n");
-      } else {
-        msgBox.innerText = "Tidak ada kombinasi pemenang. Coba lagi!";
+
+        setTimeout(() => {
+          cascade();
+        }, 1000);
       }
     }
 
-    /*************************************************************************
-     * Update Saldo tampilan
-     *************************************************************************/
-    function updateSaldoBox(){
-      saldoBox.innerText = "Saldo: Rp. " + saldo;
+    // ✅ Fungsi cascade isi ulang tile
+    function cascade() {
+      const rows = 4;
+      const cols = 5;
+      let grid = [];
+      let imgs = [...slot.querySelectorAll("img")];
+
+      for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+          grid[r][c] = imgs[r * cols + c];
+        }
+      }
+
+      for (let c = 0; c < cols; c++) {
+        let stack = [];
+        for (let r = rows - 1; r >= 0; r--) {
+          if (grid[r][c].style.visibility !== "hidden") {
+            stack.push(grid[r][c].src);
+          }
+        }
+        for (let r = rows - 1; r >= 0; r--) {
+          if (stack.length > 0) {
+            grid[r][c].src = stack.shift();
+            grid[r][c].style.visibility = "visible";
+          } else {
+            let newSymbol = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+            grid[r][c].src = newSymbol;
+            grid[r][c].style.visibility = "visible";
+            grid[r][c].classList.add("fall");
+            setTimeout(() => grid[r][c].classList.remove("fall"), 300);
+          }
+        }
+      }
+
+      // cek lagi jika ada kemenangan baru setelah cascade
+      setTimeout(() => {
+        checkWin();
+      }, 500);
     }
 
-    /*************************************************************************
-     * Event listeners
-     *************************************************************************/
     spinBtn.addEventListener("click", startSpin);
     stopBtn.addEventListener("click", stopSpin);
 
-    // nonaktifkan stop ketika belum spin
-    stopBtn.disabled = true;
-
-    /*************************************************************************
-     * Inisialisasi awal
-     *************************************************************************/
-    preloadAll();
     initGrid();
-    updateSaldoBox();
-
-    /*************************************************************************
-     * Catatan:
-     * - Jika ingin mengubah jumlah kombinasi/imbalan, ubah objek `paytable`.
-     * - Jika kamu ingin hadiah berbeda per simbol, ganti `paytable` menjadi
-     *   struktur { symbol: {3:val,4:val,5:val} } dan ubah evaluasi di atas.
-     * - Pastikan folder gambar `img/tiles/` memiliki semua file yang ada pada
-     *   array `symbols`.
-     *************************************************************************/
   </script>
 </body>
 </html>

@@ -6,111 +6,138 @@
   <title>Slot Mahjong</title>
   <style>
     body {
-      background: #1a1a1a;
-      color: #fff;
+      margin: 0;
       font-family: Arial, sans-serif;
+      background: #0b3d2e;
+      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       height: 100vh;
-      margin: 0;
+      overflow: hidden;
     }
-    .header {
+    header {
+      padding: 10px;
+      text-align: center;
       font-size: 20px;
-      margin-bottom: 10px;
+      background: #145c44;
+      width: 100%;
+    }
+    .balance {
+      margin: 10px;
+      font-size: 18px;
     }
     .slot {
       display: grid;
       grid-template-columns: repeat(5, 70px);
       grid-template-rows: repeat(4, 70px);
       gap: 5px;
-      background: #333;
+      background: #063524;
       padding: 10px;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
     }
-    .cell {
-      width: 70px;
-      height: 70px;
-      background: #555;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 5px;
-      font-size: 24px;
-      color: yellow;
+    .slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+      padding: 4px;
     }
     .controls {
       margin-top: 15px;
     }
     button {
-      background: #ffcc00;
+      background: gold;
       border: none;
       padding: 10px 20px;
-      border-radius: 8px;
       font-size: 18px;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: bold;
+      color: #333;
     }
-    button:hover {
-      background: #ffaa00;
+    button:active {
+      transform: scale(0.96);
+    }
+    @media (max-width: 600px) {
+      .slot {
+        grid-template-columns: repeat(5, 60px);
+        grid-template-rows: repeat(4, 60px);
+      }
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    Saldo: <span id="saldo">Rp 100000</span>
-  </div>
-
-  <div class="slot" id="slot">
-    <!-- 4x5 grid -->
-  </div>
-
+  <header>🎰 Slot Mahjong</header>
+  <div class="balance">Saldo: <span id="balance">Rp. 1.000.000</span></div>
+  <div class="slot" id="slot"></div>
   <div class="controls">
     <button onclick="spin()">SPIN</button>
   </div>
 
   <script>
+    const tiles = [
+      // Dots
+      "dots1.png","dots2.png","dots3.png","dots4.png","dots5.png","dots6.png","dots7.png","dots8.png","dots9.png",
+      // Bamboo
+      "bamboo1.png","bamboo2.png","bamboo3.png","bamboo4.png","bamboo5.png","bamboo6.png","bamboo7.png","bamboo8.png","bamboo9.png",
+      // Characters
+      "characters1.png","characters2.png","characters3.png","characters4.png","characters5.png","characters6.png","characters7.png","characters8.png","characters9.png",
+      // Winds
+      "wind_east.png","wind_south.png","wind_west.png","wind_north.png",
+      // Dragons
+      "dragon_red.png","dragon_green.png","dragon_white.png",
+      // Special
+      "wild.png","scatter.png"
+    ];
+
     const slot = document.getElementById("slot");
-    const saldoEl = document.getElementById("saldo");
+    const balanceEl = document.getElementById("balance");
+    let balance = 1000000; // Rp. 1.000.000
+    const bet = 10000; // Rp. 10.000 per spin
 
-    let saldo = 100000; // saldo awal
-    const bet = 1000;   // biaya per spin
-    const simbol = ["🀄","🉐","🀆","🀅","🀇","🀈","🀉","🀊"]; // contoh simbol mahjong
-
-    // buat grid awal
-    for (let i=0; i<20; i++) {
-      const div = document.createElement("div");
-      div.classList.add("cell");
-      div.textContent = simbol[Math.floor(Math.random()*simbol.length)];
-      slot.appendChild(div);
+    function renderBoard(board) {
+      slot.innerHTML = "";
+      board.forEach(tile => {
+        const img = document.createElement("img");
+        img.src = "img/tiles/" + tile;
+        slot.appendChild(img);
+      });
     }
 
     function spin() {
-      if (saldo < bet) {
-        alert("Saldo tidak cukup!");
+      if (balance < bet) {
+        alert("Saldo habis!");
         return;
       }
+      balance -= bet;
 
-      // kurangi saldo
-      saldo -= bet;
-
-      // putar slot
-      const cells = document.querySelectorAll(".cell");
-      cells.forEach(cell => {
-        cell.textContent = simbol[Math.floor(Math.random()*simbol.length)];
-      });
-
-      // cek kemenangan sederhana: jika ada 3 simbol pertama sama
-      const winSymbol = cells[0].textContent;
-      if (cells[1].textContent === winSymbol && cells[2].textContent === winSymbol) {
-        let hadiah = 5000; // contoh hadiah
-        saldo += hadiah;
-        alert("Menang! +Rp " + hadiah.toLocaleString("id-ID"));
+      let board = [];
+      for (let i = 0; i < 20; i++) { // 4x5
+        const randomTile = tiles[Math.floor(Math.random() * tiles.length)];
+        board.push(randomTile);
       }
 
-      // update tampilan saldo
-      saldoEl.textContent = "Rp " + saldo.toLocaleString("id-ID");
+      renderBoard(board);
+      checkWin(board);
+
+      balanceEl.textContent = "Rp. " + balance.toLocaleString();
     }
+
+    function checkWin(board) {
+      // Cek sederhana: jika ada >=3 scatter → menang 50.000
+      let scatters = board.filter(t => t === "scatter.png").length;
+      if (scatters >= 3) {
+        balance += 50000;
+        alert("Scatter muncul " + scatters + " kali! Menang Rp. 50.000");
+      }
+    }
+
+    // Render awal
+    renderBoard(Array(20).fill("dots1.png"));
   </script>
 </body>
 </html>

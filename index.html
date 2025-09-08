@@ -77,6 +77,10 @@
   <div id="slot-grid"></div>
   <button onclick="spin()">SPIN</button>
 
+  <!-- 🎵 Suara -->
+  <audio id="spinSound" src="sounds/spin.mp3" preload="auto"></audio>
+  <audio id="dropSound" src="sounds/drop.mp3" preload="auto"></audio>
+
   <script>
     // Daftar gambar tile Mahjong
     const tiles = [
@@ -104,6 +108,9 @@
     const cols = 5;
 
     function spin() {
+      // mainkan suara spin
+      document.getElementById("spinSound").play();
+
       const grid = [];
       for (let r = 0; r < rows; r++) {
         grid[r] = [];
@@ -126,8 +133,13 @@
           img.src = tile;
           img.classList.add("tile");
 
-          // Delay animasi tiap kolom biar berasa jatuh satu-satu
+          // Delay animasi tiap kolom
           img.style.animationDelay = `${(rIndex * 5 + cIndex) * 0.05}s`;
+
+          // Suara tile jatuh (delay sama dengan animasi)
+          setTimeout(() => {
+            document.getElementById("dropSound").cloneNode().play();
+          }, ((rIndex * 5 + cIndex) * 50));
 
           rowDiv.appendChild(img);
         });

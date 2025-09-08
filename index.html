@@ -3,153 +3,186 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Slot Mahjong – Mobile Ready</title>
+  <title>Slot Mahjong Clone</title>
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #fff;
-      text-align: center;
-    }
-    header {
-      background: #1e293b;
-      padding: 10px;
+      background: url('https://i.ibb.co/VVJdQTX/bg-mahjong.jpg') no-repeat center center fixed;
+      background-size: cover;
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      color: #fff;
     }
-    header h1 {
-      font-size: 18px;
-      margin: 0;
-    }
-    .buttons {
-      display: flex;
-      gap: 10px;
-    }
-    .buttons button {
-      padding: 6px 14px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .spin { background: #16a34a; color: white; }
-    .auto { background: #475569; color: white; }
-    .stop { background: #dc2626; color: white; }
 
+    /* Container utama */
+    .game-container {
+      margin-top: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 15px;
+      padding: 10px;
+      box-shadow: 0 0 15px gold;
+    }
+
+    /* Multiplier bar */
+    .multiplier-bar {
+      display: flex;
+      justify-content: space-around;
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: gold;
+    }
+
+    /* Grid slot 5x4 */
     .slot-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      gap: 8px;
-      max-width: 90vw;
-      margin: 20px auto;
+      grid-template-columns: repeat(5, 70px);
+      grid-template-rows: repeat(4, 70px);
+      gap: 6px;
+      justify-content: center;
     }
-    .slot-cell {
-      width: 60px;
-      height: 60px;
-      background: #1e293b;
-      color: #fff;
+
+    .tile {
+      width: 70px;
+      height: 70px;
+      border-radius: 8px;
+      background: #eee;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 8px;
-      font-size: 24px;
+      font-weight: bold;
+      font-size: 22px;
+      color: #333;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      animation: fall 0.5s ease;
     }
 
-    .info {
-      background: #1e293b;
-      padding: 10px;
-      margin: 10px auto;
-      border-radius: 6px;
+    /* Efek jatuh */
+    @keyframes fall {
+      from { transform: translateY(-120px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Info saldo & taruhan */
+    .info-bar {
+      margin-top: 8px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    /* Tombol kontrol */
+    .controls {
+      margin-top: 10px;
       display: flex;
-      justify-content: space-around;
-      max-width: 90vw;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 50%;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-spin {
+      background: gold;
+      color: #000;
+    }
+
+    .btn-small {
+      border-radius: 10px;
+      padding: 8px 12px;
+      background: #444;
+      color: #fff;
     }
   </style>
 </head>
 <body>
-
-  <header>
-    <h1>Slot Mahjong</h1>
-    <div class="buttons">
-      <button class="spin">Spin</button>
-      <button class="auto">Auto</button>
-      <button class="stop">Stop</button>
+  <div class="game-container">
+    <!-- Multiplier -->
+    <div class="multiplier-bar">
+      <span>x1</span>
+      <span>x2</span>
+      <span>x3</span>
+      <span>x5</span>
     </div>
-  </header>
 
-  <div class="slot-grid" id="slotGrid">
-    <!-- 4x5 grid = 20 cell -->
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
+    <!-- Slot Grid -->
+    <div class="slot-grid" id="slotGrid">
+      <!-- Tile akan di-generate lewat JS -->
+    </div>
 
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
+    <!-- Info saldo -->
+    <div class="info-bar">
+      Saldo: <span id="saldo">10000</span> | Taruhan: <span id="bet">100</span> | Menang: <span id="win">0</span>
+    </div>
 
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-    <div class="slot-cell">?</div>
-  </div>
-
-  <div class="info">
-    <div>Saldo: <span id="saldo">10000</span></div>
-    <div>Taruhan: <span id="bet">100</span></div>
-    <div>Status: <span id="status">idle</span></div>
+    <!-- Kontrol -->
+    <div class="controls">
+      <button class="btn-small" onclick="kurangiBet()">-</button>
+      <button class="btn btn-spin" onclick="spin()">⟳</button>
+      <button class="btn-small" onclick="tambahBet()">+</button>
+    </div>
   </div>
 
   <script>
-    const grid = document.querySelectorAll(".slot-cell");
-    const saldoEl = document.getElementById("saldo");
-    const statusEl = document.getElementById("status");
-
+    const symbols = ["🀄","🀇","🀈","🀉","🀊","🀋","🀌","WILD","金"];
     let saldo = 10000;
     let bet = 100;
-    let spinning = false;
-    const symbols = ["🀄","🉐","🀆","🀅","🀄","🀀","🀁","🀂"];
+
+    function generateTile() {
+      let s = symbols[Math.floor(Math.random() * symbols.length)];
+      let div = document.createElement("div");
+      div.className = "tile";
+      div.textContent = s;
+      return div;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("slotGrid");
+      grid.innerHTML = "";
+      for (let i = 0; i < 20; i++) {
+        grid.appendChild(generateTile());
+      }
+    }
 
     function spin() {
-      if (spinning) return;
       if (saldo < bet) {
-        statusEl.textContent = "Saldo Habis!";
+        alert("Saldo tidak cukup!");
         return;
       }
       saldo -= bet;
-      saldoEl.textContent = saldo;
-      statusEl.textContent = "Spinning...";
-      spinning = true;
+      document.getElementById("saldo").textContent = saldo;
 
-      setTimeout(() => {
-        grid.forEach(cell => {
-          const rand = symbols[Math.floor(Math.random() * symbols.length)];
-          cell.textContent = rand;
-        });
-        statusEl.textContent = "Selesai";
-        spinning = false;
-      }, 1000);
+      renderGrid();
+
+      // Simulasi menang random
+      let menang = Math.random() < 0.3 ? bet * (1 + Math.floor(Math.random() * 5)) : 0;
+      saldo += menang;
+      document.getElementById("win").textContent = menang;
+      document.getElementById("saldo").textContent = saldo;
     }
 
-    document.querySelector(".spin").addEventListener("click", spin);
-    document.querySelector(".stop").addEventListener("click", () => {
-      statusEl.textContent = "Stopped";
-      spinning = false;
-    });
-  </script>
+    function tambahBet() {
+      bet += 100;
+      document.getElementById("bet").textContent = bet;
+    }
 
+    function kurangiBet() {
+      if (bet > 100) {
+        bet -= 100;
+        document.getElementById("bet").textContent = bet;
+      }
+    }
+
+    // Pertama kali load
+    renderGrid();
+  </script>
 </body>
 </html>

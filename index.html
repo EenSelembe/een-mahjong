@@ -42,6 +42,16 @@
       border-radius: 6px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.4);
       background: #fff;
+      transform: translateY(-150px);
+      opacity: 0;
+      animation: drop 0.5s forwards;
+    }
+
+    @keyframes drop {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     button {
@@ -108,13 +118,17 @@
     function renderGrid(grid) {
       const container = document.getElementById("slot-grid");
       container.innerHTML = "";
-      grid.forEach(row => {
+      grid.forEach((row, rIndex) => {
         const rowDiv = document.createElement("div");
         rowDiv.classList.add("row");
-        row.forEach(tile => {
+        row.forEach((tile, cIndex) => {
           const img = document.createElement("img");
           img.src = tile;
           img.classList.add("tile");
+
+          // Delay animasi tiap kolom biar berasa jatuh satu-satu
+          img.style.animationDelay = `${(rIndex * 5 + cIndex) * 0.05}s`;
+
           rowDiv.appendChild(img);
         });
         container.appendChild(rowDiv);

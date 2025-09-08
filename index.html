@@ -1,670 +1,360 @@
-<!DOCTYPE html>
-<html>
-
+<!doctype html>
+<html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mahjong, using standard HTML, CSS, and JavaScript</title>
-  <link rel="shortcut icon" type="image/jpeg" href="img/tiles/31.jpg">
-  <link rel="stylesheet" href="src/css/base-colors.css">
-  <link rel="stylesheet" href="src/css/colors.css">
-  <link rel="stylesheet" href="src/css/index.css">
-  <script src="src/js/page/tiles-locknum.js" async></script>
-  <script src="src/js/page/play-or-watch.js" type="module"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>🀄 Slot Mahjong – Mobile</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a33; --card:#0f1530; --muted:#93a4c8; --text:#eaf2ff;
+    --accent:#22c55e; --warn:#f59e0b; --danger:#ef4444; --line:#38bdf8;
+    --tile:#0b153a; --tile2:#0f1f4f; --shadow:0 10px 20px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(1200px 800px at 70% -10%,#1a2550 0%,#0b1020 60%);
+    color:var(--text); font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;
+    min-height:100vh; display:flex; flex-direction:column; gap:8px;
+  }
+  header{
+    padding:10px 12px; background:rgba(10,16,35,.65); backdrop-filter:saturate(1.2) blur(6px);
+    display:flex; gap:8px; justify-content:space-between; align-items:center; border-bottom:1px solid #223155;
+  }
+  h1{margin:0;font-size:16px;display:flex;gap:8px;align-items:center}
+  .brand{display:flex;align-items:center;gap:6px}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .btn{
+    border:0; border-radius:12px; padding:9px 14px; font-weight:700; cursor:pointer;
+    color:#062314; background:var(--accent); box-shadow:var(--shadow); transition:.15s transform;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn.secondary{background:#334155;color:#e5edf7}
+  .btn.warn{background:var(--warn);color:#2a1904}
+  .btn.danger{background:var(--danger);color:#2b0b0b}
+  .btn[disabled]{opacity:.45;pointer-events:none}
+  .wrap{padding:10px; display:grid; gap:10px}
+  .board{
+    background:linear-gradient(180deg,#0e1636 0%, #0b1230 100%);
+    border-radius:16px; padding:10px; box-shadow:var(--shadow);
+    border:1px solid #1e2b59;
+  }
+  /* Reels */
+  .stage{
+    --cols:5; --rows:3;
+    width:100%; aspect-ratio:5/3; position:relative; overflow:hidden; border-radius:14px;
+    background:linear-gradient(180deg,#0b1435,#09102a);
+  }
+  .reels{display:grid; grid-template-columns:repeat(var(--cols),1fr); height:100%; gap:8px; padding:8px}
+  .reel{position:relative; overflow:hidden; border-radius:10px; background:linear-gradient(180deg,var(--tile),var(--tile2))}
+  .strip{position:absolute; left:0; right:0; top:0; will-change:transform; filter:drop-shadow(0 2px 0 #09132f)}
+  .cell{
+    height:calc((100% - 16px)/3); display:flex; align-items:center; justify-content:center;
+    font-size:clamp(26px,6.5vw,48px);
+  }
+  .blur .strip{filter:blur(2px) brightness(1.2)}
+  /* Payline highlight */
+  .lineCanvas{position:absolute; inset:0; pointer-events:none}
+  /* Panel bawah */
+  .hud{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .kbd{background:#0b1433;border:1px solid #1c2a5c;border-radius:6px;padding:3px 6px;font-family:ui-monospace,Consolas,monospace;color:#cfe1ff}
+  .card{background:var(--panel); border-radius:16px; padding:10px; box-shadow:var(--shadow); border:1px solid #1e2b59}
+  details summary{cursor:pointer; user-select:none}
+  textarea{width:100%; min-height:120px; background:#07112a; color:#dce9ff; border:1px solid #1b2b59; border-radius:10px; padding:8px; font:12px/1.4 ui-monospace,Consolas,monospace}
+  .grow{flex:1}
+  @media (min-width:900px){
+    .wrap{grid-template-columns: 1.2fr .8fr}
+  }
+</style>
 </head>
-
 <body>
-  <br> <!-- because in rare cases, padding-top is overkill -->
-
-  <main class="board" tabindex="0">
-    <div class="players">
-      <div class="player" id="0" data-wincount="0" data-score="2000"></div>
-      <div class="player" id="1" data-wincount="0" data-score="2000"></div>
-      <div class="player" id="2" data-wincount="0" data-score="2000"></div>
-      <div class="player" id="3" data-wincount="0" data-score="2000"></div>
+  <header>
+    <div class="brand"><span style="font-size:18px">🀄</span><h1>Slot Mahjong</h1></div>
+    <div class="row">
+      <button id="btnSpin" class="btn">🎰 Spin</button>
+      <button id="btnAuto" class="btn secondary">▶ Auto</button>
+      <button id="btnStop" class="btn danger" disabled>⏹ Stop</button>
     </div>
+  </header>
 
-    <div class="corner wall data"></div>
-    <div class="corner settings">settings...</div>
-    <div class="corner theming">theme</div>
-    <div class="discards"></div>
-    <div class="sidebar">
-      <div class="knowledge"></div>
-    </div>
+  <div class="wrap">
+    <section class="board card">
+      <div class="stage" id="stage">
+        <div class="reels" id="reels"></div>
+        <canvas class="lineCanvas" id="lines"></canvas>
+      </div>
+      <div class="hud">
+        <span>Saldo: <span id="bal" class="kbd">10000</span></span>
+        <span>Taruhan:
+          <button id="betMinus" class="btn secondary" style="padding:4px 8px">−</button>
+          <span id="bet" class="kbd">100</span>
+          <button id="betPlus" class="btn secondary" style="padding:4px 8px">＋</button>
+        </span>
+        <span>Menang: <span id="win" class="kbd">0</span></span>
+        <span class="grow"></span>
+        <label class="row"><input id="sfx" type="checkbox" checked> SFX</label>
+      </div>
+    </section>
 
-    <div class="windicator">
-      <div class="player-wind tc e">西</div>
-      <div class="player-wind rc">南</div>
-      <div class="player-wind bc">東</div>
-      <div class="player-wind lc">北</div>
-      <div class="wind-of-the-round">東　南　西　北</div>
-      <div class="hand-counter"></div>
-    </div>
-
-    <div class="hidden modal"></div>
-  </main>
-
-  <footer>
-    Written by <a target="_blank" nofollow href="https://mastodon.social/@TheRealPomax">Pomax</a>, project page
-    over on <a target="_blank" nofollow href="https://github.com/Pomax/mahjong">https://github.com/Pomax/mahjong</a>
-    <span class="fund">
-      [
-      <a target="_blank" nofollow href="https://github.com/Pomax/mahjong/issues">bugs/feedback</a>
-      ] [
-      <a target="_blank" nofollow
-        href="https://www.paypal.com/donate/?cmd=_s-xclick&hosted_button_id=3BNHGHZAS3DP6&locale.x=en_CA">support this project</a>
-      ]
-    </span>
-  </footer>
-
-  <section id="tutorial" style="display: none">
-    <h1><a href="#tutorial">This is a programming tutorial.</a></h1>
-
-    <p>
-      This is a fully functional implementation of the game of mahjong,
-      with competitive computer players, made for two reasons. The first
-      being that I like mahjong and I wanted to be able to play it on
-      a computer without having to install any software for that, and
-      the second being that it's a great example by which to explain how
-      to go about writing software that isn't trivial. We've all seen
-      tutorials for writing a "todo app", or "a single web page", but
-      those aren't things you'd actually want to write if you were to
-      make something: they're simple toy exercises to show off "how
-      easily you can make something". The problem is that tutorials
-      like this gloss over the fact that actually making something rather
-      than doing a simple exercise isn't easy. Writing software is hard.
-    </p>
-
-    <p>
-      And because it's hard, being told that it's easy also makes it
-      really easy to forget to plan for hardship: once you find something
-      you <em>actually</em> want to do, you soon discover that just
-      following the same methodology of that easy, toy implementation
-      makes you run into all kinds of obstacles, and if you're not
-      careful, or you don't have someone to help you get on track,
-      that thing you wanted to make just grinds to a halt before it
-      gets abandoned altogether. Tutorials don't teach you how to
-      plan for work you know is going to take more than a few days
-      to get done, so what if there was a tutorial that did? A
-      tutorial that covered the space <em>between</em> toy problems
-      and product programming as a day job? That's where this comes in.
-    </p>
-
-    <p style="display: none">
-      And not just because of the amount of code involved, it's also
-      because you need to understand how much you can break up the work,
-      when to recognise you're going too many different things, and
-      when to abandon something that just doens't seem to want to work
-      so that you can try a different approach. Programming is hard,
-      you're going to fail at <em>some</em> point, and it would be super
-      nice if there was a tutorial that didn't just tell you want to do,
-      but also told you what failure looks like, so you can spot it,
-      and maybe even avoid it.
-    </p>
-
-    <p>
-      The game you can play, above, took about two months to write in
-      my spare time, and I'm going to assume you'll be doing the same,
-      because you probably already have a job, or you're attending school,
-      and you don't have the luxury of spending 16 hours a day on personal
-      projects. So: if you want to learn to program something non-trivial,
-      and you understand that this means you'll probably be working on it
-      for a couple of weeks, or even a month or two: this might just be
-      the tutorial for you.
-    </p>
-
-    <p>
-      Of course, if you just came here to <em>play</em> mahjong, then
-      as an added bonus, you can! Keep reading for an explanation of
-      how mahjong works, and specifically which rule set and scoring
-      system this particular implementation of mahjong supports.
-    </p>
-  </section>
-
-  <section id="explanation">
-    <h1><a href="#explanation">The how of Mahjong</a></h1>
-
-    <p>
-      Mahjong is a four player tile game where players compete to form a
-      winning "hand" of 14 tiles, arranged (in general) as four triplets
-      (either consecutive tiles within the same suit, or genuine triplets with
-      the same tile three times), and a pair (one tile, twice).
-    </p>
-
-    <p>
-      The traditional game uses 144 tiles, consisting of three numbered suits,
-      seven types of "honour" tile split into "winds" and "dragons", and two
-      sets of bonus tiles. Specifically:
-    </p>
-
-    <ul>
-      <li>
-        <p>
-          Four sets of the numerical tiles 1 through 9 with "dots" ornamentation (traditionally called 筒, "coin"):
-        </p>
-        <div>
-          <dots-one></dots-one>
-          <dots-two></dots-two>
-          <dots-three></dots-three>
-          <dots-four></dots-four>
-          <dots-five></dots-five>
-          <dots-six></dots-six>
-          <dots-seven></dots-seven>
-          <dots-eight></dots-eight>
-          <dots-nine></dots-nine>
+    <section class="card">
+      <details>
+        <summary>Log</summary>
+        <pre id="log" style="max-height:180px;overflow:auto;background:#0b1433;border-radius:10px;padding:8px"></pre>
+      </details>
+      <details>
+        <summary>Opsional: Tempel Script Asli (tidak wajib)</summary>
+        <textarea id="original"></textarea>
+        <div class="row" style="margin-top:6px">
+          <button id="runOriginal" class="btn warn">⚙ Jalankan Script Asli</button>
+          <span>Status: <span id="execStatus" class="kbd">idle</span></span>
         </div>
-      </li>
-      <li>
-        <p>
-          Four sets of the numerical tiles 1 through 9 with "bamboo"/"sticks" ornamentation (traditionally called 索, "coin string"):
-        </p>
-        <div>
-          <bamboo-one></bamboo-one>
-          <bamboo-two></bamboo-two>
-          <bamboo-three></bamboo-three>
-          <bamboo-four></bamboo-four>
-          <bamboo-five></bamboo-five>
-          <bamboo-six></bamboo-six>
-          <bamboo-seven></bamboo-seven>
-          <bamboo-eight></bamboo-eight>
-          <bamboo-nine></bamboo-nine>
-        </div>
-      </li>
-      <li>
-        <p>
-          Four sets of the numerical tiles 1 through 9 with "Chinese character" ornamentation (traditionally called 萬, "10,000"):
-        </p>
-        <div>
-          <characters-one></characters-one>
-          <characters-two></characters-two>
-          <characters-three></characters-three>
-          <characters-four></characters-four>
-          <characters-five></characters-five>
-          <characters-six></characters-six>
-          <characters-seven></characters-seven>
-          <characters-eight></characters-eight>
-          <characters-nine></characters-nine>
-        </div>
-      </li>
-      <li>
-        <p>
-          Four sets of the four cardinal "wind" directions:
-        </p>
-        <div>
-          <east-wind></east-wind>
-          <south-wind></south-wind>
-          <west-wind></west-wind>
-          <north-wind></north-wind>
-        </div>
-      </li>
-      <li>
-        <p>
-          Four sets of "dragon" tiles:
-        </p>
-        <div>
-          <green-dragon></green-dragon>
-          <red-dragon></red-dragon>
-          <white-dragon></white-dragon>
-        </div>
-      </li>
-    </ul>
+      </details>
+      <div class="label" style="color:var(--muted);margin-top:8px">Paylines: 10 | 5×3 | Pembayaran: 3/4/5 berturut dari kiri.</div>
+    </section>
+  </div>
 
-    <p>
-      With eight bonus tiles (not part of play - they are set aside
-      immediately when drawn, with a new tile drawn to replace it):
-    </p>
+<script>
+/* ========= Utility ========= */
+const $=q=>document.querySelector(q);
+const log=(...a)=>{$("#log").textContent+=a.join(" ")+"\\n";$("#log").scrollTop=$("#log").scrollHeight;}
+const rng=()=>Math.random();
 
-    <ul>
-      <li>
-        <p>
-          The four seasons (spring, summer, fall, winter, or 春, 夏, 秋, 冬)
-        </p>
-        <div>
-          <season-one></season-one>
-          <season-two></season-two>
-          <season-three></season-three>
-          <season-four></season-four>
-        </div>
-      </li>
-      <li>
-        <p>
-          The four seasonal flowers (orchid, plum blossom, bamboo,
-          chrysanthenum, or 蘭, 梅, 竹, 菊)
-        </p>
-        <div>
-          <flower-one></flower-one>
-          <flower-two></flower-two>
-          <flower-three></flower-three>
-          <flower-four></flower-four>
-        </div>
-      </li>
-    </ul>
-  </section>
+/* ========= Konfigurasi Game ========= */
+const COLS=5, ROWS=3;
+const SYMBOLS=[
+  {id:'RD', ch:'🀄', weight:2,  pay:[0,0,50,200,1000]}, // Red Dragon (rare)
+  {id:'GR', ch:'🀙', weight:3,  pay:[0,0,40,160,600]},  // Green dragon substitute-ish (no wild, cuma bayar tinggi)
+  {id:'1',  ch:'🀇', weight:6,  pay:[0,0,20,80,300]},
+  {id:'2',  ch:'🀈', weight:7,  pay:[0,0,16,60,200]},
+  {id:'3',  ch:'🀉', weight:8,  pay:[0,0,12,40,160]},
+  {id:'4',  ch:'🀊', weight:9,  pay:[0,0,10,30,120]},
+  {id:'5',  ch:'🀋', weight:10, pay:[0,0,8, 24,90]},
+  {id:'6',  ch:'🀌', weight:12, pay:[0,0,6, 18,70]},
+  {id:'7',  ch:'🀍', weight:12, pay:[0,0,5, 15,60]},
+  {id:'8',  ch:'🀎', weight:12, pay:[0,0,4, 12,50]},
+];
+const STRIP = SYMBOLS.flatMap(s=>Array(s.weight).fill(s.id)); // weighted strip
 
-  <section id="gameplay">
-    <h2><a href="#gameplay">Game play</a></h2>
+// 10 paylines (dari kiri → kanan), koordinat per kolom (row index 0..2)
+const PAYLINES = [
+  [1,1,1,1,1], // tengah
+  [0,0,0,0,0], // atas
+  [2,2,2,2,2], // bawah
+  [0,1,2,1,0],
+  [2,1,0,1,2],
+  [0,0,1,0,0],
+  [2,2,1,2,2],
+  [1,0,1,2,1],
+  [1,2,1,0,1],
+  [0,1,1,1,2],
+];
 
-    <p>
-      Core game play is about as simple as it gets: everyone starts with 13
-      tiles, and players take turns in which they draw a tile from the set of
-      undealt tiles, check to see if they can form a winning pattern, and if
-      not, discard one of their tiles so they're back at 13, after which it
-      is the next player's turn.
-    </p>
+const SYM = Object.fromEntries(SYMBOLS.map(s=>[s.id,s]));
 
-    <p>
-      The "actual game" part, rather than "random chance" aspect comes in the
-      form of "claims", where players may claim a tile as it is being
-      discarded if they can use that tile to form certain sets. In this case,
-      it immediately becomes their turn, irrespective of whose turn it
-      "should" have been, and rather than drawing a tile from the undealt
-      tiles, they take the discarded tile as their 14<sup>th</sup> tile.
-    </p>
-  </section>
+/* ========= DOM Reels ========= */
+const reelsEl = $("#reels");
+const linesCanvas = $("#lines");
+function setupReels(){
+  reelsEl.innerHTML='';
+  for(let c=0;c<COLS;c++){
+    const col=document.createElement('div'); col.className='reel';
+    const strip=document.createElement('div'); strip.className='strip';
+    // 3 sel awal (akan diganti ketika berhenti)
+    for(let r=0;r<ROWS;r++){
+      const cell=document.createElement('div'); cell.className='cell'; cell.textContent='?';
+      strip.appendChild(cell);
+    }
+    col.appendChild(strip);
+    reelsEl.appendChild(col);
+  }
+  resizeLines();
+}
+function resizeLines(){
+  const rect = $("#stage").getBoundingClientRect();
+  linesCanvas.width=rect.width*2; linesCanvas.height=rect.height*2;
+  linesCanvas.style.width=rect.width+'px'; linesCanvas.style.height=rect.height+'px';
+}
+window.addEventListener('resize', resizeLines);
 
-  <section id="rules">
-    <h2><a href="#rules">Rules around claiming discards</a></h2>
+/* ========= Engine ========= */
+function pickSymbol(){ return STRIP[(STRIP.length*rng())|0]; }
+function spinResult(){
+  // kembalikan matriks [col][row] id symbol
+  const grid = Array.from({length:COLS}, ()=>Array.from({length:ROWS}, ()=>pickSymbol()));
+  return grid;
+}
+// evaluasi 10 paylines, left-to-right contiguous
+function evaluate(grid, bet){
+  const wins=[];
+  for (let li=0; li<PAYLINES.length; li++){
+    const line=PAYLINES[li];
+    const first=grid[0][ line[0] ];
+    let count=1;
+    for(let c=1;c<COLS;c++){
+      const sym = grid[c][ line[c] ];
+      if(sym===first) count++; else break;
+    }
+    if(count>=3){
+      const pay = SYM[first].pay[count] * (bet/100);
+      if(pay>0) wins.push({line:li,count,symbol:first,amount:pay});
+    }
+  }
+  const total=wins.reduce((a,w)=>a+w.amount,0);
+  return {wins,total};
+}
 
-    <ul>
-      <li>
-        if a player has two identical tiles in their hand, they may claim a
-        third tile when another player discards it. This is called a "pung".
-      </li>
-      <li>
-        if a player has three identical tiles in their hand, they may claim
-        the fourth tile when another player discards it. This is called a
-        "kong".
-      </li>
-      <li>
-        if a player is waiting for a specific tile to win, they may claim that
-        winning tile when another player discards it regardless of what the
-        tile is needed for and whether that would be a legal claim if the
-        player were not winning on it.
-      </li>
-    </ul>
+/* ========= Animasi & Render ========= */
+let spinning=false, autoTimer=null;
+let balance=10000, bet=100, lastWin=0;
 
-    <p>
-      If none of the above claims are made, then the player whose turn it is
-      next is allowed to pick up the discard tile rather than drawing a tile
-      from the undealt tiles, in order to form a set consisting of three
-      consecutive numbers within the same suit, called a "chow". Note that
-      these sets are typically worth no points, and will typically even
-      negatively impact the hand score by ruling out scores based on true-set
-      hand patterns.
-    </p>
+function updateHUD(){
+  $("#bal").textContent = balance.toFixed(0);
+  $("#bet").textContent = bet.toFixed(0);
+  $("#win").textContent = lastWin.toFixed(0);
+}
+function setButtonsBusy(busy){
+  $("#btnSpin").disabled = busy;
+  $("#btnAuto").disabled = busy || autoTimer!=null;
+  $("#btnStop").disabled = !busy && autoTimer==null ? true:false;
+}
 
-    <p>
-      In the case when a tile has claims by multiple players, a winning claims
-      trump any other claims, and a real claim trumps a player wishing to form
-      a set of consecutive tiles.
-    </p>
+function drawLines(wins){
+  const ctx=linesCanvas.getContext('2d');
+  ctx.clearRect(0,0,linesCanvas.width,linesCanvas.height);
+  if(!wins?.length) return;
+  const rect = $("#stage").getBoundingClientRect();
+  const cw = rect.width / COLS, ch = rect.height / ROWS;
+  ctx.lineWidth=4*2; ctx.strokeStyle='#38bdf8aa'; ctx.lineJoin='round';
+  wins.forEach(w=>{
+    const path=PAYLINES[w.line];
+    ctx.beginPath();
+    for(let c=0;c<COLS;c++){
+      const x=(c*cw + cw/2)*2;
+      const y=(path[c]*ch + ch/2)*2;
+      if(c===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+}
 
-    <p>
-      When honouring a claim, the receiving player <strong>must</strong>
-      reveal all tiles in the set they formed, and put those tiles aside,
-      face-up. These tiles are considered "locked", and can no longer be used
-      for anything, with a single exception:
-    </p>
+async function spin(){
+  if(spinning) return;
+  if(balance<bet){ log('Saldo tidak cukup'); return; }
+  spinning=true; lastWin=0; setButtonsBusy(true);
+  balance-=bet; updateHUD(); drawLines([]);
 
-    <p>
-      If a player has a locked, true set of three tiles already on the table,
-      and they draw (not claim) the fourth tile, they are allowed to add that
-      tile to their locked set of three, forming a locked set of four. If a
-      player elects to do this, they receive a new tile from the undealt set
-      of tiles to compensate for the "loss" of a tile. If a player forgets to
-      do this, they they will not have enough tiles left to form a winning
-      hand, and may even be penalized for playing a hand with the wrong number
-      of tiles.
-    </p>
+  // target hasil
+  const result=spinResult();
 
-    <h2 id="rule-clarification"><a href="#rule-clarification">Rule clarifications</a></h2>
+  // jalankan animasi tiap reel berurutan
+  const cols=[...reelsEl.children];
+  for(let c=0;c<COLS;c++){
+    const reel=cols[c];
+    reel.classList.add('blur');
+    const strip=reel.querySelector('.strip');
 
-    <p>
-      A player is <em>not required</em> to declare sets if they do not need to
-      claim a tile for them. If a player has a set of three or four tiles in
-      their hand, due to having started the game with them, or having drawn
-      tiles over a number of turns to end up with them in hand, they are under
-      no obligation to reveal that fact. Winning with unrevealed tiles
-      typically incurs a bonus.
-    </p>
+    // buat 12 item acak untuk animasi bergulir
+    strip.innerHTML='';
+    const cycle=12;
+    for(let i=0;i<cycle;i++){
+      const cell=document.createElement('div'); cell.className='cell';
+      const id=pickSymbol(); cell.textContent=SYM[id].ch;
+      strip.appendChild(cell);
+    }
+    // mulai dari -offset lalu transisi ke posisi akhir
+    const step = strip.children[0].getBoundingClientRect().height;
+    strip.style.transition='none';
+    strip.style.transform=`translateY(-${step* (cycle-ROWS)}px)`;
+    await wait(10);
 
-    <p>
-      Note that there are special considerations when a player has four of the
-      same tile in their hand. They may declare this and lock the four tiles
-      as a set that is no longer in their hand, receiving an extra tile to
-      prevent them from having too few tiles to form a winning hand (revealing
-      the tiles depending on the exact rules being played. Some rules do not
-      require this kind of set to be revealed, meaning other players will not
-      know which tile has become unavailable, and so may try to win on a tile
-      that cannot ever appear during that round of play). They may also elect
-      to keep all four tiles in their hand so that three of the tiles can be
-      used as one set, and the fourth tile can be used to form a numerical
-      set. Note that because a winning hand has to consist of four sets and a
-      pair, a player who wishes to count all four tiles as a single set will
-      <em>have</em> to declare that set, or they will not have enough tiles
-      with which to form the necessary number of sets and pair.
-    </p>
-  </section>
+    // gulir cepat
+    strip.style.transition='transform 600ms cubic-bezier(.2,.7,0,1)';
+    strip.style.transform='translateY(0px)';
+    await wait(600 + c*90);
 
-  <section id="scoring">
-    <h2><a href="#scoring">Scoring</a></h2>
+    // pasang 3 symbol final
+    strip.style.transition='none';
+    strip.innerHTML='';
+    for(let r=0;r<ROWS;r++){
+      const cell=document.createElement('div'); cell.className='cell';
+      const id=result[c][r]; cell.textContent=SYM[id].ch;
+      strip.appendChild(cell);
+    }
+    reel.classList.remove('blur');
+    // kecilkan delay antar reel agar berurutan
+    await wait(90);
+  }
 
-    <p>
-      Scoring of hands is entirely dependent on the style of mahjong played,
-      but can be split into two ways to count points:
-    </p>
+  const payout=evaluate(result,bet);
+  balance+=payout.total; lastWin=payout.total; updateHUD();
+  if(payout.total>0) {
+    drawLines(payout.wins);
+    sfxWin();
+    log(`Menang ${payout.total} pada ${payout.wins.length} line: `+
+      payout.wins.map(w=>`${SYM[w.symbol].ch} x${w.count}`).join(', '));
+  } else {
+    log('Tidak menang');
+  }
+  spinning=false; setButtonsBusy(false);
+  if(autoTimer && balance>=bet){ /* terus */ }
+  else if(autoTimer){ stopAuto(); }
+}
 
-    <ul>
-      <li>
-        <em>points and doublings</em>, in which players gain points for
-        individual sets, and score doublings for particular combinations of
-        sets. Typically this scoring system has an "upper limit", limiting how
-        many points players can score per hand.
-      </li>
-      <li>
-        <em>faan</em>, in which player's hands are assigned a "hand score"
-        based on specific sets and patterns of sets, and this hand score is
-        then translated into a player score based on a rule-dependent mapping.
-        Typically this scoring system has both an upper limit, to fix how many
-        points players can score per hand, as well as a "lower limit", in
-        which getting a higher hand score does not alter the resulting player
-        score for several steps. E.g. a hand worth 5 or 6 faan may both score
-        as 5 faan, with a hand worth 7 faan assigned a higher score.
-      </li>
-    </ul>
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
 
-    <p>
-      Additionally, rules typically use one of two "score settling" methods:
-    </p>
+/* ========= Audio sederhana ========= */
+let ctxA=null, beepOsc=null;
+function sfx(beats=[440,660,880], dur=70){
+  if(!$("#sfx").checked) return;
+  if(!ctxA) ctxA = new (window.AudioContext||window.webkitAudioContext)();
+  const now=ctxA.currentTime;
+  beats.forEach((f,i)=>{
+    const o=ctxA.createOscillator(), g=ctxA.createGain();
+    o.frequency.value=f; o.type='sine';
+    g.gain.value=0.0001; g.gain.setTargetAtTime(0.15,now+i*0.08,0.01);
+    g.gain.setTargetAtTime(0.0001,now+i*0.08+dur/1000,0.05);
+    o.connect(g).connect(ctxA.destination); o.start(now+i*0.08); o.stop(now+i*0.08+0.35);
+  });
+}
+const sfxClick=()=>sfx([220,330],50);
+const sfxWin=()=>sfx([740,880,1040,1320],65);
 
-    <ul>
-      <li>
-        Winner takes all, in which the winner is paid their player score by
-        the other players. In this system, winning is more important than
-        forming high scoring hand patterns.
-      </li>
-      <li>
-        Everyone pays everyone, in which the winning player is paid their
-        score by the other players, and the other players all pay each other
-        based on the difference in scoring. In this system, forming high
-        scoring hand patterns is more important than just winning.
-      </li>
-    </ul>
-  </section>
+/* ========= Kontrol ========= */
+function startAuto(){
+  if(autoTimer || spinning) return;
+  $("#btnAuto").disabled=true; $("#btnStop").disabled=false;
+  autoTimer = setInterval(()=>{ if(!spinning) spin(); }, 100);
+}
+function stopAuto(){
+  clearInterval(autoTimer); autoTimer=null;
+  $("#btnAuto").disabled=false; $("#btnStop").disabled=true;
+}
+$("#btnSpin").onclick=()=>{ sfxClick(); spin(); };
+$("#btnAuto").onclick=()=>{ sfxClick(); startAuto(); };
+$("#btnStop").onclick=()=>{ sfxClick(); stopAuto(); };
+$("#betMinus").onclick=()=>{ bet=Math.max(100, bet-100); updateHUD(); sfxClick(); };
+$("#betPlus").onclick=()=>{ bet=Math.min(5000, bet+100); updateHUD(); sfxClick(); };
 
-  <section id="this-game">
-    <h1><a href="#this-game">About this particular implementation</a></h1>
+/* ========= Opsional: jalankan script asli (sandboxed) ========= */
+$("#runOriginal").onclick=()=>{
+  try{
+    const code=$("#original").value;
+    if(!code.trim()){ $("#execStatus").textContent='kosong'; return; }
+    // dijalankan terisolasi (Function sandbox, tanpa arg)
+    new Function('"use strict";\\n'+code)();
+    $("#execStatus").textContent='OK';
+    log('Script asli dijalankan.');
+  }catch(e){
+    $("#execStatus").textContent='gagal';
+    log('Error script asli:', e.message);
+  }
+};
 
-    <p>
-      The game on this page can be played using two different rulesets:
-      Chinese Classical rules, and Cantonese rules.
-    </p>
-
-    <h2 id="chinese-classical-rules"><a href="#chinese-classical-rules">Chinese Classical (default)</a></h2>
-
-    <ul>
-      <li>scoring is based on points and doubles</li>
-      <li>players start with 2000 points</li>
-      <li>the losers settle their scores after paying the winner</li>
-      <li>East is paid double their winnings, and double-pays any losses</li>
-      <li>the deal does <em>not</em> pass to the next player if East wins.</li>
-    </ul>
-
-    <p>
-      Points are awarded to any player for the following (open/concealed):
-    </p>
-
-    <ul>
-      <li>each bonus tile: 4</li>
-      <li>pair of dragons: 2</li>
-      <li>pair of own winds: 2</li>
-      <li>pair of wind of the round: 2</li>
-      <li>pung of simples (numbers 2 through 8): 2/4</li>
-      <li>pung of terminals (numbers 1 and 9): 4/8</li>
-      <li>pung of winds: 4/8</li>
-      <li>pung of dragons: 4/8</li>
-      <li>kong of simples: 8/16</li>
-      <li>kong of terminals: 16/32</li>
-      <li>kong of winds: 16/32</li>
-      <li>kong of dragonss: 16/32</li>
-    </ul>
-
-    <p>
-      The following points are awarded to the winner only:
-    </p>
-
-    <ul>
-      <li>self-drawn win: 2</li>
-      <li>winning on a non-scoring pair: 2</li>
-      <li>winning on a scoring pair: 4</li>
-    </ul>
-
-    <p>
-      The following doubles are awarded to any player:
-    </p>
-
-    <ul>
-      <li>having your own flower and season: 1</li>
-      <li>having all flowers: +1</li>
-      <li>having all seasons: +1</li>
-      <li>pung/kong of own wind: 1</li>
-      <li>pung/kong of wind of the round: 1</li>
-      <li>pung/kong of dragons: 1</li>
-    </ul>
-
-    <p>
-      The following doubles are awarded to the winner only:
-    </p>
-
-    <ul>
-      <li>chow hand (four chows and a non-scoring pair): 1</li>
-      <li>one suit and honour (numbered tiles all from the same suit) : 1</li>
-      <li>one suit (only number tiles, all the same suit): 3</li>
-      <li>all pung hand: 1</li>
-      <li>fully concealed (and self drawn) hand: 1</li>
-      <li>(self-drawn) win on the last tile from the wall: 1</li>
-      <li>claimed win on the last discard: 1</li>
-      <li>winning by robbing a kong: 1</li>
-    </ul>
-
-    <p>
-      The following limit hands (scoring a flat 1000 points) exist:
-    </p>
-
-    <ul>
-      <li>fully concealed pung hand</li>
-      <li>all terminals: pungs and pairs of only 1 and 9 tiles</li>
-      <li>all honours: pungs and pairs of winds and dragons</li>
-      <li>all kong: four kongs and a pair</li>
-      <li>three great scholars: pung/kong of each dragon</li>
-      <li>little four winds: pung/kong of three winds, pair of last wind</li>
-      <li>big four winds: pung/kong of all winds</li>
-      <li>thirteen orphans: a 1 and 9 of each suit, one of each wind and dragon, and a pairing tile</li>
-      <li>nine gates: 1,1,1, 2,3,4,5,6,7,8, 9,9,9, all of the same suit, all concealed, and a pairing tile</li>
-    </ul>
-
-    <p>
-      The player winds rotate counter-clockwise, so that (E,S,W,N) become
-      (S,W,N,E), and the wind of the round rotates clockwise, starting at
-      East, then South, then West, then North.
-    </p>
-
-    <h2 id="cantonese-rules"><a href="#cantonese-rules">Cantonese</a></h2>
-
-    <ul>
-      <li>scoring is based on points ("faan") and tiered limits ("laak"), which are mapped to a real score</li>
-      <li>limit hands score at laak 2 (see table below)</li>
-      <li>players start with 500 points</li>
-      <li>only the winner scores points</li>
-      <li>winners are paid double by all players on a self-drawn win, otherwise only the discarding player pays double
-      </li>
-    </ul>
-
-    <p>
-      Points are awarded for for the following:
-    </p>
-
-    <ul>
-      <li>pung/kong of own wind: 1</li>
-      <li>pung/kong of wind of the round: 1</li>
-      <li>pung/kong of dragons: 1</li>
-      <li>having no flowers or seasons: 1</li>
-      <li>having your own flower: 1</li>
-      <li>having your own season: 1</li>
-      <li>having all flowers: 1 extra point</li>
-      <li>having all seasons: 1 extra point</li>
-      <li>self-drawn win: 1</li>
-      <li>chow hand (four chows and a non-scoring pair): 1</li>
-      <li>one suit and honour (numbered tiles all from the same suit) : 3</li>
-      <li>one suit (only number tiles, all the same suit): 6</li>
-      <li>all honours hand: 5</li>
-      <li>all pung hand: 3</li>
-      <li>fully concealed hand: 1</li>
-      <li>winning by robbing a kong: 1</li>
-    </ul>
-
-    <p>
-      The following limit hands exist:
-    </p>
-
-    <ul>
-      <li>all terminals: pungs and pairs of only 1 and 9 tiles</li>
-      <li>all honours: pungs and pairs of only winds and dragons</li>
-      <li>three great scholars: pung/kong of each dragon</li>
-      <li>little four winds: pung/kong of three winds, pair of last wind</li>
-      <li>big four winds: pung/kong of all winds</li>
-      <li>thirteen orphans: a 1 and 9 of each suit, one of each wind and dragon, and a pairing tile</li>
-      <li>nine gates: 1,1,1, 2,3,4,5,6,7,8, 9,9,9, all of the same suit, all concealed, and a pairing tile</li>
-    </ul>
-
-    <p>
-      The conversion table for turning faan into a hand score is:
-    </p>
-
-    <table>
-      <tr>
-        <th>faan</th>
-        <th>hand score</th>
-      </tr>
-      <tr>
-        <td>0</td>
-        <td>0.5</td>
-      </tr>
-      <tr>
-        <td>1</td>
-        <td>1</td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>2</td>
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>4</td>
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>8</td>
-      </tr>
-      <tr>
-        <td>5-6 (laak 1)</td>
-        <td>16</td>
-      </tr>
-      <tr>
-        <td>7+ (laak 2)</td>
-        <td>32</td>
-      </tr>
-    </table>
-
-    <p>
-      Because of the payment rules explained above, a hand score leads to
-      a total winnings of either 4x the points when winning off of a discard
-      (discarding player pays double, the other two players pay the base
-      score), or 6x the points when declaring a self-drawn win (all other
-      players pay double).
-    </p>
-  </section>
-
-  <section id="controls">
-    <h2><a href="#controls">Using the game interface</a></h2>
-
-    <p>
-      This game can be played with either a mouse or keyboard (or combination of the two).
-      The interface may also give you hints while playing:
-    </p>
-
-    <ul>
-      <li>When playing with suggestions turned on (<em>these are on by default</em>) any tile that you
-        can claim will be highlighted in green when someone else plays it.</li>
-      <li>When playing with bot recommendations turned on (<em>these are on by default</em>) any tile
-        that it recommends you claim will be highlighted in pink when someone else plays it.</li>
-      <li>When playing with bot recommendations turned on, recommended discards will be highlighted
-        with a single black bar at the top of the tile.</li>
-      <li>Regardless of suggestion settings, the tile you drew during your turn will be highlighted
-        using a green bar at the bottom of the tile, and your currently selected tile will have a
-        full green border.</li>
-    </ul>
-
-    <h3>Mouse controls</h3>
-
-    <p>
-      After receiving a new tile either from the wall or from claiming a set:
-    </p>
-
-    <ul>
-      <li>click any tile in your tilebank to discard that tile.</li>
-      <li>long-click to bring up the dialog to declare a kong or win.</li>
-    </ul>
-
-    <p>
-      While looking at discards from other players:
-    </p>
-
-    <ul>
-      <li>ignore this discard: click anywhere on the discard "table", except for the discarded tile.</li>
-      <li>claim discard: click the discarded tile.</li>
-    </ul>
-
-    <p>
-      While in a modal dialog, click any button to select that option.
-    </p>
-
-    <h3>Keyboard controls</h3>
-
-    <p>
-      After receiving a new tile, and after claiming a set:
-    </p>
-
-    <ul>
-      <li>cycle left through your tiles: left cursor key or "a" key</li>
-      <li>cycle right through your tiles: right cursor key or "d" key</li>
-      <li>jump to first discardable tile: home key</li>
-      <li>jump to last discardable tile: end key</li>
-      <li>discard highlighted tile: space, enter, up cursor key, or "w" key</li>
-      <li>declare a fully concealed, or melded kong with the currently highlighted tile: down cursor key or "s" key</li>
-      <li>declare a self-drawn win after dismissing the claim dialog: down cursor key or "s" key</li>
-    </ul>
-
-    <p>
-      While looking at discards from other players:
-    </p>
-
-    <ul>
-      <li>ignore this discard: left or right cursor key, or "a" or "d" key</li>
-      <li>claim discard: space, enter, up cursor key, or "w" key</li>
-    </ul>
-
-    <p>
-      While in a modal dialog:
-    </p>
-
-    <ul>
-      <li>move focus up one button: down cursor key, or "s" key</li>
-      <li>move focus up one button: up cursor key, or "w" key</li>
-      <li>select this button's option: space or enter.</li>
-    </ul>
-
-  </section>
+/* ========= Inisialisasi ========= */
+function init(){
+  setupReels(); resizeLines(); updateHUD(); drawLines([]);
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden && autoTimer) stopAuto(); });
+init();
+</script>
 </body>
-
 </html>

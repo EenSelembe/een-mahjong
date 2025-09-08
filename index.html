@@ -1,218 +1,520 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Slot Mahjong</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Slot Mahjong - Lengkap</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background: #b22222;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    :root{
+      --bg:#b22222;
+      --panel:#2b2b2b;
+      --tile-bg:#fff;
+      --accent:#28a745;
+      --danger:#dc3545;
     }
-    h1 {
-      margin: 10px;
+    html,body{height:100%;}
+    body{
+      margin:0;
+      padding:16px;
+      box-sizing:border-box;
+      font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;
+      background:var(--bg);
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      -webkit-font-smoothing:antialiased;
     }
-    #slot {
-      display: grid;
-      grid-template-columns: repeat(5, 70px);
-      grid-template-rows: repeat(4, 70px);
-      gap: 5px;
-      background: #2b2b2b;
-      padding: 10px;
-      border-radius: 10px;
-      margin: 10px 0;
+    h1{margin:0;font-size:20px}
+    /* Slot panel */
+    .panel{
+      background:var(--panel);
+      padding:12px;
+      border-radius:12px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.4);
+      width:100%;
+      max-width:420px;
     }
-    #slot img {
-      width: 70px;
-      height: 70px;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 8px;
-      transition: transform 0.3s, opacity 0.3s;
+
+    /* Grid 4x5 responsive */
+    #slot{
+      display:grid;
+      grid-template-columns:repeat(5,1fr); /* 5 columns */
+      grid-template-rows:repeat(4,1fr); /* 4 rows */
+      gap:6px;
+      width:100%;
+      aspect-ratio:5/4; /* maintain shape */
+      margin-bottom:10px;
+      touch-action:manipulation;
     }
-    #slot img.burst {
-      transform: scale(1.2);
-      opacity: 0;
+    /* Each tile container so we can animate per-column */
+    .cell{
+      width:100%;
+      height:100%;
+      background:linear-gradient(180deg,#ffffff,#f0f0f0);
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      position:relative;
+      box-shadow:inset 0 -6px 8px rgba(0,0,0,0.08);
     }
-    #controls {
-      display: flex;
-      gap: 10px;
+    .cell img{
+      width:92%;
+      height:92%;
+      object-fit:contain;
+      transform-origin:center;
+      transition:transform 220ms ease,opacity 220ms ease;
+      user-select:none;
+      pointer-events:none;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+
+    /* burst animation */
+    .burst{
+      animation:burst 420ms ease forwards;
     }
-    #spin { background: #28a745; color: #fff; }
-    #stop { background: #dc3545; color: #fff; }
-    #saldo {
-      margin-top: 10px;
-      font-size: 18px;
-      background: #00000066;
-      padding: 8px 16px;
-      border-radius: 8px;
+    @keyframes burst{
+      0%{transform:scale(1);opacity:1;}
+      40%{transform:scale(1.25) rotate(8deg); opacity:0.9;}
+      100%{transform:scale(0.1) rotate(40deg); opacity:0;}
+    }
+
+    /* falling animation for reposition */
+    .fall{
+      transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 320ms;
+    }
+
+    /* Controls */
+    #controls{
+      display:flex;
+      gap:8px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    button{
+      padding:10px 16px;
+      border-radius:8px;
+      border:0;
+      font-size:16px;
+      cursor:pointer;
+    }
+    #spin{background:var(--accent);color:#fff}
+    #stop{background:var(--danger);color:#fff}
+    #saldo{
+      margin-top:6px;
+      font-size:16px;
+      background:rgba(0,0,0,0.3);
+      padding:8px 12px;
+      border-radius:8px;
+      display:inline-block;
+    }
+
+    /* small screens */
+    @media (max-width:420px){
+      body{padding:10px}
+      h1{font-size:18px}
     }
   </style>
 </head>
 <body>
   <h1>Slot Mahjong</h1>
-  <div id="slot"></div>
 
-  <div id="controls">
-    <button id="spin">🎰 Spin</button>
-    <button id="stop">⏹ Stop</button>
+  <div class="panel">
+    <div id="slot" aria-hidden="false"></div>
+
+    <div id="controls">
+      <button id="spin">🎰 Spin</button>
+      <button id="stop">⏹ Stop</button>
+    </div>
+
+    <div id="saldo">Saldo: Rp. 10000</div>
   </div>
 
-  <div id="saldo">Saldo: Rp. 10000</div>
-
   <script>
-    const symbols = [
-      // Bamboo 1–9
-      "bamboo-1.png","bamboo-2.png","bamboo-3.png","bamboo-4.png","bamboo-5.png",
-      "bamboo-6.png","bamboo-7.png","bamboo-8.png","bamboo-9.png",
+  /**********************************************
+   * Skrip dasar (sesuai index awalmu) - saya
+   * kembangkan tanpa mengurangi fungsi2 lama.
+   **********************************************/
 
-      // Characters 1–9
-      "characters-1.png","characters-2.png","characters-3.png","characters-4.png","characters-5.png",
-      "characters-6.png","characters-7.png","characters-8.png","characters-9.png",
+  // Symbols array (sama seperti skrip awalmu) - sesuaikan nama file di folder img/tiles/
+  const symbols = [
+    // Bamboo 1–9
+    "bamboo-1.png","bamboo-2.png","bamboo-3.png","bamboo-4.png","bamboo-5.png",
+    "bamboo-6.png","bamboo-7.png","bamboo-8.png","bamboo-9.png",
 
-      // Dots 1–9
-      "dots-1.png","dots-2.png","dots-3.png","dots-4.png","dots-5.png",
-      "dots-6.png","dots-7.png","dots-8.png","dots-9.png",
+    // Characters 1–9 (kamu sebut 'characters' bukan 'char')
+    "characters-1.png","characters-2.png","characters-3.png","characters-4.png","characters-5.png",
+    "characters-6.png","characters-7.png","characters-8.png","characters-9.png",
 
-      // Winds
-      "wind-east.png","wind-south.png","wind-west.png","wind-north.png",
+    // Dots 1–9 (dots plural)
+    "dots-1.png","dots-2.png","dots-3.png","dots-4.png","dots-5.png",
+    "dots-6.png","dots-7.png","dots-8.png","dots-9.png",
 
-      // Dragons
-      "dragon-red.png","dragon-green.png","dragon-white.png",
+    // Winds
+    "wind-east.png","wind-south.png","wind-west.png","wind-north.png",
 
-      // Special tiles
-      "wild.png","scatter.png"
-    ];
+    // Dragons
+    "dragon-red.png","dragon-green.png","dragon-white.png",
 
-    const slot = document.getElementById("slot");
-    const spinBtn = document.getElementById("spin");
-    const stopBtn = document.getElementById("stop");
-    const saldoBox = document.getElementById("saldo");
+    // Special tiles
+    "wild.png","scatter.png"
+  ];
 
-    let saldo = 10000;
-    let reels = [];
-    let spinningIntervals = [];
+  // DOM refs
+  const slot = document.getElementById("slot");
+  const spinBtn = document.getElementById("spin");
+  const stopBtn = document.getElementById("stop");
+  const saldoBox = document.getElementById("saldo");
 
-    // Buat grid awal 4x5
-    function initGrid() {
-      slot.innerHTML = "";
-      reels = [];
-      for (let col = 0; col < 5; col++) {
-        const reel = [];
-        for (let row = 0; row < 4; row++) {
-          const img = document.createElement("img");
-          img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-          slot.appendChild(img);
-          reel.push(img);
-        }
-        reels.push(reel);
+  // Game state
+  let saldo = 10000;
+  let spinCost = 100;
+  let winPerTile = 500; // reward per tile that pecah
+  let cols = 5, rows = 4; // 4x5 grid
+  let cells = []; // will hold DOM nodes in a 2D array [col][row]
+  let spinningColumns = []; // intervals per column
+  let spinRunning = false;
+  let cascadeInProgress = false;
+
+  // Preload images for smoother display
+  function preloadImages(list, cb){
+    let loaded = 0;
+    const imgs = [];
+    list.forEach(src => {
+      const img = new Image();
+      img.onload = () => {
+        loaded++;
+        if (loaded === list.length && typeof cb === "function") cb();
+      };
+      img.onerror = () => {
+        // still count error to avoid hang
+        loaded++;
+        if (loaded === list.length && typeof cb === "function") cb();
+      };
+      img.src = "img/tiles/" + src;
+      imgs.push(img);
+    });
+  }
+
+  // Initialize grid (keabsahan: menjaga fungsi initGrid dari skrip awal)
+  function initGrid(){
+    slot.innerHTML = "";
+    cells = [];
+    // Create columns as arrays so we can animate per-column
+    for (let c = 0; c < cols; c++){
+      cells[c] = [];
+    }
+    // Fill grid by rows then append as cells (visually will be grid by CSS)
+    for (let r = 0; r < rows; r++){
+      for (let c = 0; c < cols; c++){
+        const container = document.createElement("div");
+        container.className = "cell";
+        const img = document.createElement("img");
+        img.alt = "tile";
+        // random start image
+        img.src = "img/tiles/" + symbols[Math.floor(Math.random()*symbols.length)];
+        container.appendChild(img);
+        slot.appendChild(container);
+        cells[c][r] = {container, img}; // column-major store
+      }
+    }
+  }
+
+  // Helper: get random symbol src (string with path)
+  function randomSymbol(){
+    return symbols[Math.floor(Math.random()*symbols.length)];
+  }
+
+  // Update saldo UI
+  function updateSaldo(){
+    saldoBox.innerText = "Saldo: Rp. " + saldo.toLocaleString('id-ID');
+  }
+
+  /*********************
+   * SPIN BEHAVIOR
+   * - Start columns sequentially (small delay between starts)
+   * - But stop all columns at the same time (so col1 spins longer)
+   *********************/
+  function startSpin(){
+    if (spinRunning || cascadeInProgress) return;
+    if (saldo < spinCost){
+      alert("Saldo tidak cukup!");
+      return;
+    }
+    saldo -= spinCost;
+    updateSaldo();
+
+    spinRunning = true;
+    // clear any previous intervals
+    spinningColumns.forEach(iv => clearInterval(iv));
+    spinningColumns = [];
+
+    const spinInterval = 80; // ms per image change
+    const startDelay = 120; // delay between starting next column
+    const totalStartTime = startDelay * (cols - 1); // total time to start last column
+    const spinDurationAfterLastStart = 900; // keep spinning after last started, then stop all simultaneously
+    const stopAfter = totalStartTime + spinDurationAfterLastStart; // ms until stop all
+
+    // For visual: add small randomized offset per column start timing
+    for (let c = 0; c < cols; c++){
+      ((colIndex) => {
+        const delay = startDelay * colIndex;
+        setTimeout(() => {
+          // start interval for this column
+          const iv = setInterval(() => {
+            // change images only in this column
+            for (let r = 0; r < rows; r++){
+              const {img} = cells[colIndex][r];
+              img.src = "img/tiles/" + randomSymbol();
+            }
+          }, spinInterval);
+          spinningColumns[colIndex] = iv;
+        }, delay);
+      })(c);
+    }
+
+    // schedule stop for ALL columns simultaneously
+    setTimeout(() => {
+      stopAllColumns();
+      spinRunning = false;
+      // After stopping, check wins & start cascade
+      setTimeout(() => runCascade(), 120);
+    }, stopAfter);
+  }
+
+  // Stop function preserved (user asked not to remove). I keep it but it's optional.
+  function stopAllColumns(){
+    spinningColumns.forEach(iv => clearInterval(iv));
+    spinningColumns = [];
+  }
+
+  // Stop button behavior (kept)
+  stopBtn.addEventListener("click", () => {
+    // If spin is running, stop immediately (user previously requested remove stop; but keep)
+    stopAllColumns();
+    spinRunning = false;
+    // check wins & cascade
+    setTimeout(() => runCascade(), 80);
+  });
+
+  // Start spin button
+  spinBtn.addEventListener("click", startSpin);
+
+  /*********************
+   * MATCHING & CASCADE
+   * Rules:
+   * - We read from left to right.
+   * - For any symbol S: if S exists in column 0,1,2 => win (minimal 3 columns)
+   *   - If S also exists in column 3 and/or 4, take that into account for extended wins
+   * - We will mark one tile per winning column as "winner tile" (if multiple tiles same symbol in a column,
+   *   we choose the top-most occurrence for clarity). All marked tiles will burst.
+   * - After bursting, tiles above fall down and new ones fill from top (animation).
+   * - Repeat (cascade) until no more wins.
+   *********************/
+
+  // Utility: find positions of a symbol per column
+  // returns array of arrays: positions[col] = [rowIndices where symbol found]
+  function findPositionsOfSymbol(sym){
+    const positions = [];
+    for (let c = 0; c < cols; c++){
+      positions[c] = [];
+      for (let r = 0; r < rows; r++){
+        if (getSymbolAt(c,r) === sym) positions[c].push(r);
+      }
+    }
+    return positions;
+  }
+
+  // Helper: get symbol string (filename) at cell
+  function getSymbolAt(col, row){
+    return cells[col][row].img.src.split("/").pop();
+  }
+
+  // Helper: set symbol at cell (and optionally animate)
+  function setSymbolAt(col,row,filename,opts={}){
+    const img = cells[col][row].img;
+    img.src = "img/tiles/" + filename;
+    if (opts.flash){
+      img.style.transform = "scale(1.04)";
+      setTimeout(()=>img.style.transform = "", 150);
+    }
+  }
+
+  // Scan for wins according to rule: check each symbol if it exists in col0,col1,col2 (at least)
+  // and extend to col3/4 if present.
+  // Return winningMap: { symbol: {cols: [colIndices], positions: [{col,row}] } }
+  function scanWins(){
+    const wins = []; // array of win objects {symbol, winCols: [c0,c1,...], chosenCells:[{c,r},...]}
+
+    // Build set of unique symbols currently on board
+    const unique = new Set();
+    for (let c=0;c<cols;c++){
+      for (let r=0;r<rows;r++){
+        unique.add( getSymbolAt(c,r) );
       }
     }
 
-    function startSpin() {
-      if (saldo < 100) {
-        alert("Saldo tidak cukup!");
-        return;
+    unique.forEach(sym => {
+      const pos = findPositionsOfSymbol(sym); // pos per column
+      // need symbol present in first 3 columns
+      if (pos[0].length>0 && pos[1].length>0 && pos[2].length>0){
+        // gather win columns
+        const winCols = [0,1,2];
+        if (pos[3].length>0) winCols.push(3);
+        if (pos[4].length>0) winCols.push(4);
+        // choose one tile per win column to burst — choose lowest visible (bottom-most) to look nicer (or top-most)
+        const chosen = winCols.map(cidx => {
+          // choose the bottom-most (highest row index) so that gravity looks natural when removed
+          const rowsFound = pos[cidx];
+          const chosenRow = rowsFound[rowsFound.length-1]; // bottom-most
+          return {c:cidx, r: chosenRow};
+        });
+        wins.push({symbol: sym, winCols, chosen});
       }
-      saldo -= 100; // biaya spin
-      saldoBox.innerText = "Saldo: Rp. " + saldo;
+    });
 
-      stopAll();
-      spinningIntervals = [];
+    return wins;
+  }
 
-      // Putar tiap kolom
-      reels.forEach((reel, col) => {
-        const interval = setInterval(() => {
-          reel.forEach(img => {
-            img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-          });
-        }, 100);
-        spinningIntervals.push(interval);
+  // Do bursting animation of chosen cells, then remove them (set to null), then collapse/fill.
+  function doBurstAndCollapse(winList){
+    return new Promise(resolve => {
+      if (!winList || winList.length===0) return resolve(0);
+      // collect chosen cells into a set for unique cells
+      const chosenCells = [];
+      winList.forEach(w=>{
+        w.chosen.forEach(ch => {
+          // avoid duplicate push
+          if (!chosenCells.some(x=>x.c===ch.c && x.r===ch.r)) chosenCells.push(ch);
+        });
       });
 
-      // Berhenti semua setelah 2 detik
+      // Animate burst
+      chosenCells.forEach(({c,r})=>{
+        const cell = cells[c][r];
+        const img = cell.img;
+        img.classList.add("burst");
+      });
+
+      // After burst animation, clear the cells and collapse columns
       setTimeout(() => {
-        stopAll();
-        evaluateResult();
-      }, 2000);
-    }
-
-    function stopAll() {
-      spinningIntervals.forEach(interval => clearInterval(interval));
-      spinningIntervals = [];
-    }
-
-    function evaluateResult() {
-      const grid = [];
-      for (let col = 0; col < 5; col++) {
-        grid[col] = [];
-        for (let row = 0; row < 4; row++) {
-          const src = reels[col][row].src.split("/").pop();
-          grid[col][row] = src;
-        }
-      }
-
-      let matched = [];
-      // Cek kemenangan ala Mahjong: dari kiri ke kanan, minimal 3 kolom berturut
-      for (let i = 0; i < symbols.length; i++) {
-        let sym = symbols[i];
-        let count = 0;
-        let temp = [];
-
-        for (let col = 0; col < 5; col++) {
-          let found = false;
-          for (let row = 0; row < 4; row++) {
-            if (grid[col][row] === sym) {
-              found = true;
-              temp.push(reels[col][row]);
-            }
-          }
-          if (found) {
-            count++;
-          } else {
-            break;
-          }
-        }
-
-        if (count >= 3) {
-          matched = matched.concat(temp);
-        }
-      }
-
-      if (matched.length > 0) {
-        saldo += matched.length * 50; // hadiah per tile pecah
-        saldoBox.innerText = "Saldo: Rp. " + saldo;
-
-        matched.forEach(img => {
-          img.classList.add("burst");
+        // Remove nodes visually (we will mark these as empty by setting src = empty string)
+        chosenCells.forEach(({c,r})=>{
+          const img = cells[c][r].img;
+          img.classList.remove("burst");
+          // hide before collapse
+          img.style.opacity = "0";
+          img.style.transform = "scale(0.1)";
+          // mark as empty after short delay
         });
 
         setTimeout(() => {
-          matched.forEach(img => {
-            img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-            img.classList.remove("burst");
-          });
-        }, 500);
-      }
+          // For each column, collapse (remove empty spots and shift down)
+          for (let c=0;c<cols;c++){
+            // collect non-empty filenames in this column (bottom-last index is rows-1)
+            const colFiles = [];
+            for (let r=0;r<rows;r++){
+              const filename = getSymbolAt(c,r);
+              // treat empty (src missing or opacity 0) as placeholder; we'll test by checking img.style.opacity?
+              const imgEl = cells[c][r].img;
+              // Determine emptiness: if opacity==0 or filename blank
+              const isEmpty = (imgEl.style.opacity === "0" || !filename || filename === "");
+              if (!isEmpty) colFiles.push(filename);
+            }
+            // how many new tiles to add on top
+            const need = rows - colFiles.length;
+            const newTop = [];
+            for (let k=0;k<need;k++){
+              newTop.push( randomSymbol() );
+            }
+            const newCol = newTop.concat(colFiles); // top -> bottom
+            // Assign them and animate falling
+            for (let r=0;r<rows;r++){
+              const imgEl = cells[c][r].img;
+              // for falling animation, set translateY from -X to 0
+              imgEl.style.transition = "none";
+              imgEl.style.transform = "translateY(-20px)";
+              imgEl.style.opacity = "0";
+              // set new src
+              imgEl.src = "img/tiles/" + newCol[r];
+            }
+            // force reflow then animate to position
+            requestAnimationFrame(()=> {
+              for (let r=0;r<rows;r++){
+                const imgEl = cells[c][r].img;
+                imgEl.style.transition = "transform 420ms cubic-bezier(.2,.9,.2,1), opacity 300ms";
+                imgEl.style.transform = "translateY(0)";
+                imgEl.style.opacity = "1";
+              }
+            });
+          } // end for columns
+
+          // After collapse animation done, small delay then resolve with number of burst tiles
+          setTimeout(() => {
+            resolve(chosenCells.length);
+          }, 460);
+        }, 180);
+      }, 420);
+    });
+  }
+
+  // Run cascade loop: scanWins -> doBurstAndCollapse -> reward -> repeat until no wins
+  async function runCascade(){
+    if (cascadeInProgress) return;
+    cascadeInProgress = true;
+    let totalBurst = 0;
+    while (true){
+      const wins = scanWins();
+      if (wins.length === 0) break;
+      // Do burst and collapse
+      const burstCount = await doBurstAndCollapse(wins);
+      totalBurst += burstCount;
+      // reward
+      const reward = burstCount * winPerTile;
+      saldo += reward;
+      updateSaldo();
+      // small pause before next cascade scan
+      await new Promise(res => setTimeout(res, 220));
     }
+    cascadeInProgress = false;
+    if (totalBurst > 0){
+      // show a toast? for now simple alert (can be replaced)
+      // alert("Menang! Total tile pecah: " + totalBurst + " — Dapat Rp. " + (totalBurst*winPerTile).toLocaleString('id-ID'));
+      // Instead of alert (block UI), we will briefly flash saldo background
+      saldoBox.animate([{background:'rgba(0,0,0,0.3)'},{background:'#ffd700'},{background:'rgba(0,0,0,0.3)'}], {duration:900});
+    }
+  }
 
-    spinBtn.addEventListener("click", startSpin);
-    stopBtn.addEventListener("click", stopAll);
-
+  // On load: preload images then init grid
+  preloadImages(symbols, () => {
     initGrid();
+    updateSaldo();
+    // If you want initial cascade check uncomment:
+    // runCascade();
+  });
+
+  // Keep "initGrid" and cost/spin logic from original file (so nothing essential dihapus)
+  // (Original code had startSpin, stopSpin, initGrid etc. — implemented above with enhancements)
+
+  // Optional: make the entire slot clickable to spin on mobile
+  slot.addEventListener("click", () => {
+    // if user long-press maybe they don't want spin — for simplicity just start spin on tap
+    // ensure we don't trigger accidental double
+    if (!spinRunning && !cascadeInProgress){
+      startSpin();
+    }
+  });
+
+  // Keyboard support (Space to spin)
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (!spinRunning && !cascadeInProgress) startSpin();
+    }
+  });
+
   </script>
 </body>
 </html>

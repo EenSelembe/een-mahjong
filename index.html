@@ -34,6 +34,11 @@
       object-fit: contain;
       background: #fff;
       border-radius: 8px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    #slot img.burst {
+      transform: scale(1.2);
+      opacity: 0;
     }
     #controls {
       display: flex;
@@ -47,28 +52,13 @@
       cursor: pointer;
     }
     #spin { background: #28a745; color: #fff; }
+    #stop { background: #dc3545; color: #fff; }
     #saldo {
       margin-top: 10px;
       font-size: 18px;
       background: #00000066;
       padding: 8px 16px;
       border-radius: 8px;
-    }
-    #message {
-      margin-top: 8px;
-      font-size: 16px;
-      font-weight: bold;
-    }
-    /* Animasi menang */
-    #slot img.win {
-      animation: explode 0.6s ease-in-out forwards;
-      border: 2px solid gold;
-      box-shadow: 0 0 12px gold;
-    }
-    @keyframes explode {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.5) rotate(20deg); opacity: 0.7; }
-      100% { transform: scale(0.1) rotate(-45deg); opacity: 0; }
     }
   </style>
 </head>
@@ -78,10 +68,10 @@
 
   <div id="controls">
     <button id="spin">🎰 Spin</button>
+    <button id="stop">⏹ Stop</button>
   </div>
 
   <div id="saldo">Saldo: Rp. 10000</div>
-  <div id="message"></div>
 
   <script>
     const symbols = [
@@ -109,106 +99,118 @@
 
     const slot = document.getElementById("slot");
     const spinBtn = document.getElementById("spin");
+    const stopBtn = document.getElementById("stop");
     const saldoBox = document.getElementById("saldo");
-    const msgBox = document.getElementById("message");
 
     let saldo = 10000;
-    let spinning = false;
-    let reelIntervals = [];
+    let reels = [];
+    let spinningIntervals = [];
 
     // Buat grid awal 4x5
     function initGrid() {
       slot.innerHTML = "";
-      for (let i = 0; i < 20; i++) {
-        const img = document.createElement("img");
-        img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-        slot.appendChild(img);
+      reels = [];
+      for (let col = 0; col < 5; col++) {
+        const reel = [];
+        for (let row = 0; row < 4; row++) {
+          const img = document.createElement("img");
+          img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+          slot.appendChild(img);
+          reel.push(img);
+        }
+        reels.push(reel);
       }
     }
 
-    function updateSaldoBox() {
-      saldoBox.innerText = "Saldo: Rp. " + saldo;
-    }
-
     function startSpin() {
-      if (spinning) return;
       if (saldo < 100) {
         alert("Saldo tidak cukup!");
         return;
       }
-      saldo -= 100;
-      updateSaldoBox();
-      msgBox.innerText = "";
-      spinning = true;
+      saldo -= 100; // biaya spin
+      saldoBox.innerText = "Saldo: Rp. " + saldo;
 
-      const imgs = slot.querySelectorAll("img");
-      reelIntervals = [];
+      stopAll();
+      spinningIntervals = [];
 
-      for (let col = 0; col < 5; col++) {
-        setTimeout(() => {
-          const interval = setInterval(() => {
-            for (let row = 0; row < 4; row++) {
-              const idx = row * 5 + col;
-              imgs[idx].src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-            }
-          }, 100);
-          reelIntervals[col] = interval;
-        }, col * 200); // delay tiap kolom
-      }
+      // Putar tiap kolom
+      reels.forEach((reel, col) => {
+        const interval = setInterval(() => {
+          reel.forEach(img => {
+            img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+          });
+        }, 100);
+        spinningIntervals.push(interval);
+      });
 
-      // Semua berhenti bersamaan setelah 2 detik
+      // Berhenti semua setelah 2 detik
       setTimeout(() => {
-        stopSpin();
+        stopAll();
+        evaluateResult();
       }, 2000);
     }
 
-    function stopSpin() {
-      reelIntervals.forEach(clearInterval);
-      spinning = false;
-      evaluateResult();
+    function stopAll() {
+      spinningIntervals.forEach(interval => clearInterval(interval));
+      spinningIntervals = [];
     }
 
     function evaluateResult() {
-      const imgs = slot.querySelectorAll("img");
-      let totalWin = 0;
-      let winTiles = [];
+      const grid = [];
+      for (let col = 0; col < 5; col++) {
+        grid[col] = [];
+        for (let row = 0; row < 4; row++) {
+          const src = reels[col][row].src.split("/").pop();
+          grid[col][row] = src;
+        }
+      }
 
-      // Periksa tiap baris (horizontal)
-      for (let row = 0; row < 4; row++) {
-        const base = row * 5;
-        let first = imgs[base].src;
-        let count = 1;
-        for (let col = 1; col < 5; col++) {
-          if (imgs[base + col].src === first) {
+      let matched = [];
+      // Cek kemenangan ala Mahjong: dari kiri ke kanan, minimal 3 kolom berturut
+      for (let i = 0; i < symbols.length; i++) {
+        let sym = symbols[i];
+        let count = 0;
+        let temp = [];
+
+        for (let col = 0; col < 5; col++) {
+          let found = false;
+          for (let row = 0; row < 4; row++) {
+            if (grid[col][row] === sym) {
+              found = true;
+              temp.push(reels[col][row]);
+            }
+          }
+          if (found) {
             count++;
           } else {
             break;
           }
         }
+
         if (count >= 3) {
-          totalWin += count * 50; // hadiah dasar
-          for (let col = 0; col < count; col++) {
-            winTiles.push(base + col);
-          }
+          matched = matched.concat(temp);
         }
       }
 
-      if (totalWin > 0) {
-        saldo += totalWin;
-        updateSaldoBox();
-        msgBox.innerText = `MENANG! Total: Rp. ${totalWin}`;
-        winTiles.forEach(idx => {
-          imgs[idx].classList.add("win");
-          setTimeout(() => {
-            imgs[idx].style.visibility = "hidden";
-          }, 600);
+      if (matched.length > 0) {
+        saldo += matched.length * 50; // hadiah per tile pecah
+        saldoBox.innerText = "Saldo: Rp. " + saldo;
+
+        matched.forEach(img => {
+          img.classList.add("burst");
         });
-      } else {
-        msgBox.innerText = "Tidak ada kombinasi pemenang. Coba lagi!";
+
+        setTimeout(() => {
+          matched.forEach(img => {
+            img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+            img.classList.remove("burst");
+          });
+        }, 500);
       }
     }
 
     spinBtn.addEventListener("click", startSpin);
+    stopBtn.addEventListener("click", stopAll);
 
     initGrid();
   </script>

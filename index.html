@@ -54,24 +54,21 @@
       padding: 8px 16px;
       border-radius: 8px;
     }
-
-    /* Animasi pecah */
-    .explode {
-      animation: explode 0.5s ease forwards;
+    #message {
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    /* Animasi menang */
+    #slot img.win {
+      animation: explode 0.6s ease-in-out forwards;
+      border: 2px solid gold;
+      box-shadow: 0 0 12px gold;
     }
     @keyframes explode {
       0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.5); opacity: 0.7; }
-      100% { transform: scale(0); opacity: 0; }
-    }
-
-    /* Animasi jatuh */
-    #slot img.fall {
-      animation: fall 0.3s ease-in;
-    }
-    @keyframes fall {
-      0% { transform: translateY(-80px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
+      50% { transform: scale(1.5) rotate(20deg); opacity: 0.7; }
+      100% { transform: scale(0.1) rotate(-45deg); opacity: 0; }
     }
   </style>
 </head>
@@ -84,6 +81,7 @@
   </div>
 
   <div id="saldo">Saldo: Rp. 10000</div>
+  <div id="message"></div>
 
   <script>
     const symbols = [
@@ -112,8 +110,11 @@
     const slot = document.getElementById("slot");
     const spinBtn = document.getElementById("spin");
     const saldoBox = document.getElementById("saldo");
+    const msgBox = document.getElementById("message");
 
     let saldo = 10000;
+    let spinning = false;
+    let reelIntervals = [];
 
     // Buat grid awal 4x5
     function initGrid() {
@@ -125,119 +126,85 @@
       }
     }
 
+    function updateSaldoBox() {
+      saldoBox.innerText = "Saldo: Rp. " + saldo;
+    }
+
     function startSpin() {
+      if (spinning) return;
       if (saldo < 100) {
         alert("Saldo tidak cukup!");
         return;
       }
-      saldo -= 100; // biaya spin
-      saldoBox.innerText = "Saldo: Rp. " + saldo;
+      saldo -= 100;
+      updateSaldoBox();
+      msgBox.innerText = "";
+      spinning = true;
 
       const imgs = slot.querySelectorAll("img");
-      let spinCount = 15; // durasi acak
-      let interval = setInterval(() => {
-        imgs.forEach(img => {
-          img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-        });
-        spinCount--;
-        if (spinCount <= 0) {
-          clearInterval(interval);
-          checkWin();
-        }
-      }, 100);
-    }
+      reelIntervals = [];
 
-    // Cek kemenangan minimal 3 simbol sama dari kiri ke kanan
-    function checkWin() {
-      const rows = 4;
-      const cols = 5;
-      let grid = [];
-      let imgs = [...slot.querySelectorAll("img")];
-
-      // Buat array 2D dari grid
-      for (let r = 0; r < rows; r++) {
-        grid[r] = [];
-        for (let c = 0; c < cols; c++) {
-          grid[r][c] = imgs[r * cols + c];
-        }
+      for (let col = 0; col < 5; col++) {
+        setTimeout(() => {
+          const interval = setInterval(() => {
+            for (let row = 0; row < 4; row++) {
+              const idx = row * 5 + col;
+              imgs[idx].src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+            }
+          }, 100);
+          reelIntervals[col] = interval;
+        }, col * 200); // delay tiap kolom
       }
 
+      // Semua berhenti bersamaan setelah 2 detik
+      setTimeout(() => {
+        stopSpin();
+      }, 2000);
+    }
+
+    function stopSpin() {
+      reelIntervals.forEach(clearInterval);
+      spinning = false;
+      evaluateResult();
+    }
+
+    function evaluateResult() {
+      const imgs = slot.querySelectorAll("img");
+      let totalWin = 0;
       let winTiles = [];
 
-      for (let r = 0; r < rows; r++) {
-        let first = grid[r][0].src;
-        let match = 1;
-        for (let c = 1; c < cols; c++) {
-          if (grid[r][c].src === first) {
-            match++;
-            if (match >= 3) {
-              for (let k = 0; k <= c; k++) {
-                winTiles.push(grid[r][k]);
-              }
-            }
+      // Periksa tiap baris (horizontal)
+      for (let row = 0; row < 4; row++) {
+        const base = row * 5;
+        let first = imgs[base].src;
+        let count = 1;
+        for (let col = 1; col < 5; col++) {
+          if (imgs[base + col].src === first) {
+            count++;
           } else {
             break;
           }
         }
+        if (count >= 3) {
+          totalWin += count * 50; // hadiah dasar
+          for (let col = 0; col < count; col++) {
+            winTiles.push(base + col);
+          }
+        }
       }
 
-      if (winTiles.length > 0) {
-        saldo += 500; // hadiah
-        saldoBox.innerText = "Saldo: Rp. " + saldo;
-
-        winTiles.forEach(tile => {
-          tile.classList.add("explode");
+      if (totalWin > 0) {
+        saldo += totalWin;
+        updateSaldoBox();
+        msgBox.innerText = `MENANG! Total: Rp. ${totalWin}`;
+        winTiles.forEach(idx => {
+          imgs[idx].classList.add("win");
           setTimeout(() => {
-            tile.style.visibility = "hidden";
-          }, 500);
+            imgs[idx].style.visibility = "hidden";
+          }, 600);
         });
-
-        setTimeout(() => {
-          cascade();
-        }, 600);
-      }
-    }
-
-    // Fungsi cascade setelah tile pecah
-    function cascade() {
-      const rows = 4;
-      const cols = 5;
-      let grid = [];
-      let imgs = [...slot.querySelectorAll("img")];
-
-      // Buat array 2D dari grid
-      for (let r = 0; r < rows; r++) {
-        grid[r] = [];
-        for (let c = 0; c < cols; c++) {
-          grid[r][c] = imgs[r * cols + c];
-        }
-      }
-
-      // Loop tiap kolom
-      for (let c = 0; c < cols; c++) {
-        let stack = [];
-
-        // Ambil tile yg masih terlihat
-        for (let r = rows - 1; r >= 0; r--) {
-          if (grid[r][c].style.visibility !== "hidden") {
-            stack.push(grid[r][c].src);
-          }
-        }
-
-        // Isi ulang dari bawah
-        for (let r = rows - 1; r >= 0; r--) {
-          if (stack.length > 0) {
-            grid[r][c].src = stack.shift();
-            grid[r][c].style.visibility = "visible";
-          } else {
-            // tile baru
-            let newSymbol = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
-            grid[r][c].src = newSymbol;
-            grid[r][c].style.visibility = "visible";
-            grid[r][c].classList.add("fall");
-            setTimeout(() => grid[r][c].classList.remove("fall"), 300);
-          }
-        }
+      } else {
+        msgBox.innerText = "Tidak ada kombinasi pemenang. Coba lagi!";
       }
     }
 

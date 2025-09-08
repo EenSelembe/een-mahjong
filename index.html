@@ -7,162 +7,133 @@
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0b3d2e;
+      padding: 0;
+      font-family: sans-serif;
+      background: #b22222;
       color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      height: 100vh;
-      overflow: hidden;
     }
-    header {
-      padding: 10px;
-      text-align: center;
-      font-size: 20px;
-      background: #145c44;
-      width: 100%;
-    }
-    .balance {
+    h1 {
       margin: 10px;
-      font-size: 18px;
     }
-    .slot {
+    #slot {
       display: grid;
       grid-template-columns: repeat(5, 70px);
       grid-template-rows: repeat(4, 70px);
       gap: 5px;
-      background: #063524;
+      background: #2b2b2b;
       padding: 10px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
-      overflow: hidden;
+      border-radius: 10px;
+      margin: 10px 0;
     }
-    .tile {
-      width: 100%;
-      height: 100%;
+    #slot img {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
       background: #fff;
       border-radius: 8px;
-      padding: 4px;
+    }
+    #controls {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: fall 0.5s ease forwards;
-      opacity: 0;
-      transform: translateY(-120px);
-    }
-    .tile img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
-    @keyframes fall {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    .controls {
-      margin-top: 15px;
+      gap: 10px;
     }
     button {
-      background: gold;
-      border: none;
       padding: 10px 20px;
-      font-size: 18px;
+      font-size: 16px;
+      border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
-      color: #333;
     }
-    button:active {
-      transform: scale(0.96);
-    }
-    @media (max-width: 600px) {
-      .slot {
-        grid-template-columns: repeat(5, 60px);
-        grid-template-rows: repeat(4, 60px);
-      }
+    #spin { background: #28a745; color: #fff; }
+    #stop { background: #dc3545; color: #fff; }
+    #saldo {
+      margin-top: 10px;
+      font-size: 18px;
+      background: #00000066;
+      padding: 8px 16px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <header>🎰 Slot Mahjong</header>
-  <div class="balance">Saldo: <span id="balance">Rp. 1.000.000</span></div>
-  <div class="slot" id="slot"></div>
-  <div class="controls">
-    <button onclick="spin()">SPIN</button>
+  <h1>Slot Mahjong</h1>
+  <div id="slot"></div>
+
+  <div id="controls">
+    <button id="spin">🎰 Spin</button>
+    <button id="stop">⏹ Stop</button>
   </div>
 
+  <div id="saldo">Saldo: Rp. 10000</div>
+
   <script>
-    const tiles = [
-      // Dots
-      "dots1.png","dots2.png","dots3.png","dots4.png","dots5.png","dots6.png","dots7.png","dots8.png","dots9.png",
-      // Bamboo
-      "bamboo1.png","bamboo2.png","bamboo3.png","bamboo4.png","bamboo5.png","bamboo6.png","bamboo7.png","bamboo8.png","bamboo9.png",
-      // Characters
-      "characters1.png","characters2.png","characters3.png","characters4.png","characters5.png",
-      "characters6.png","characters7.png","characters8.png","characters9.png",
+    const symbols = [
+      // Bamboo 1–9
+      "bamboo-1.png","bamboo-2.png","bamboo-3.png","bamboo-4.png","bamboo-5.png",
+      "bamboo-6.png","bamboo-7.png","bamboo-8.png","bamboo-9.png",
+
+      // Characters 1–9
+      "characters-1.png","characters-2.png","characters-3.png","characters-4.png","characters-5.png",
+      "characters-6.png","characters-7.png","characters-8.png","characters-9.png",
+
+      // Dots 1–9
+      "dots-1.png","dots-2.png","dots-3.png","dots-4.png","dots-5.png",
+      "dots-6.png","dots-7.png","dots-8.png","dots-9.png",
+
       // Winds
-      "wind_east.png","wind_south.png","wind_west.png","wind_north.png",
+      "wind-east.png","wind-south.png","wind-west.png","wind-north.png",
+
       // Dragons
-      "dragon_red.png","dragon_green.png","dragon_white.png",
-      // Special
+      "dragon-red.png","dragon-green.png","dragon-white.png",
+
+      // Special tiles
       "wild.png","scatter.png"
     ];
 
     const slot = document.getElementById("slot");
-    const balanceEl = document.getElementById("balance");
-    let balance = 1000000; // Rp. 1.000.000
-    const bet = 10000; // Rp. 10.000 per spin
+    const spinBtn = document.getElementById("spin");
+    const stopBtn = document.getElementById("stop");
+    const saldoBox = document.getElementById("saldo");
 
-    function renderBoard(board) {
+    let saldo = 10000;
+    let spinning;
+
+    // Buat grid awal 4x5
+    function initGrid() {
       slot.innerHTML = "";
-      board.forEach((tile, index) => {
-        const div = document.createElement("div");
-        div.className = "tile";
-        div.style.animationDelay = (index % 5) * 0.1 + "s"; // efek jatuh per kolom
+      for (let i = 0; i < 20; i++) {
         const img = document.createElement("img");
-        img.src = "img/tiles/" + tile;
-        div.appendChild(img);
-        slot.appendChild(div);
-      });
+        img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+        slot.appendChild(img);
+      }
     }
 
-    function spin() {
-      if (balance < bet) {
-        alert("Saldo habis!");
+    function startSpin() {
+      if (saldo < 100) {
+        alert("Saldo tidak cukup!");
         return;
       }
-      balance -= bet;
+      saldo -= 100; // biaya spin
+      saldoBox.innerText = "Saldo: Rp. " + saldo;
 
-      let board = [];
-      for (let i = 0; i < 20; i++) { // 4x5
-        const randomTile = tiles[Math.floor(Math.random() * tiles.length)];
-        board.push(randomTile);
-      }
-
-      renderBoard(board);
-      checkWin(board);
-
-      balanceEl.textContent = "Rp. " + balance.toLocaleString();
+      spinning = setInterval(() => {
+        const imgs = slot.querySelectorAll("img");
+        imgs.forEach(img => {
+          img.src = "img/tiles/" + symbols[Math.floor(Math.random() * symbols.length)];
+        });
+      }, 100);
     }
 
-    function checkWin(board) {
-      // Cek sederhana: jika ada >=3 scatter → menang 50.000
-      let scatters = board.filter(t => t === "scatter.png").length;
-      if (scatters >= 3) {
-        balance += 50000;
-        setTimeout(() => {
-          alert("Scatter muncul " + scatters + " kali! Menang Rp. 50.000");
-          balanceEl.textContent = "Rp. " + balance.toLocaleString();
-        }, 600);
-      }
+    function stopSpin() {
+      clearInterval(spinning);
     }
 
-    // Render awal
-    renderBoard(Array(20).fill("dots1.png"));
+    spinBtn.addEventListener("click", startSpin);
+    stopBtn.addEventListener("click", stopSpin);
+
+    initGrid();
   </script>
 </body>
 </html>
